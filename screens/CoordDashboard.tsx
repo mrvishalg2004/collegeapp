@@ -38,9 +38,14 @@ export default function CoordDashboard() {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Coordinator Dashboard</Text>
-                <TouchableOpacity onPress={handleLogout}>
-                    <Ionicons name="log-out-outline" size={24} color="#333" />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity onPress={() => navigation.navigate('VerifyPayments')} style={{ marginRight: 15 }}>
+                        <Ionicons name="cash-outline" size={24} color="#333" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleLogout}>
+                        <Ionicons name="log-out-outline" size={24} color="#333" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <Text style={styles.subtitle}>My Events</Text>

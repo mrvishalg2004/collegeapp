@@ -15,7 +15,7 @@ router.post('/', auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
 
-        const { name, description, date, venue, fee, maxParticipants, departmentId, coordinatorId } = req.body;
+        const { name, description, date, venue, fee, maxParticipants, departmentId, coordinators } = req.body;
 
         const mongoose = require('mongoose');
 
@@ -24,14 +24,17 @@ router.post('/', auth, async (req, res) => {
         if (departmentId && !mongoose.Types.ObjectId.isValid(departmentId)) {
             return res.status(400).json({ message: 'Invalid Department ID' });
         }
-        if (coordinatorId && !mongoose.Types.ObjectId.isValid(coordinatorId)) {
-            return res.status(400).json({ message: 'Invalid Coordinator ID' });
+
+        // Validate coordinators
+        let validCoordinators = [];
+        if (coordinators && Array.isArray(coordinators)) {
+            validCoordinators = coordinators.filter(id => mongoose.Types.ObjectId.isValid(id));
         }
 
         const event = new Event({
             collegeId: user.collegeId,
             departmentId: departmentId || undefined,
-            coordinatorId: coordinatorId || undefined,
+            coordinators: validCoordinators,
             name,
             description,
             date,
@@ -59,7 +62,10 @@ router.get('/', async (req, res) => {
         if (collegeId) query.collegeId = collegeId;
         if (departmentId) query.departmentId = departmentId;
 
-        const events = await Event.find(query).populate('departmentId', 'name').populate('coordinatorId', 'name');
+        const events = await Event.find(query)
+            .populate('departmentId', 'name')
+            .populate('coordinators', 'name email')
+            .populate('coordinatorId', 'name'); // Legacy population
         res.json(events);
     } catch (err) {
         console.error(err.message);
@@ -90,7 +96,13 @@ router.get('/my-assignments', auth, async (req, res) => {
         return res.status(403).json({ message: 'Access denied' });
     }
     try {
-        const events = await Event.find({ coordinatorId: req.user.id }).populate('departmentId', 'name');
+        // Match if user is in 'coordinators' array OR is the legacy 'coordinatorId'
+        const events = await Event.find({
+            $or: [
+                { coordinators: req.user.id },
+                { coordinatorId: req.user.id }
+            ]
+        }).populate('departmentId', 'name');
         res.json(events);
     } catch (err) {
         console.error(err.message);
@@ -128,6 +140,35 @@ router.delete('/:id', auth, async (req, res) => {
         await event.deleteOne();
         res.json({ message: 'Event removed' });
 
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   PUT api/events/:id/complete
+// @desc    Mark event as completed (Coordinator only)
+// @access  Private (Coordinator)
+router.put('/:id/complete', auth, async (req, res) => {
+    if (req.user.role !== 'coordinator') {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+
+    try {
+        const event = await Event.findById(req.params.id);
+        if (!event) return res.status(404).json({ message: 'Event not found' });
+
+        const isCoordinator = (event.coordinators && event.coordinators.includes(req.user.id)) ||
+            (event.coordinatorId && event.coordinatorId.toString() === req.user.id);
+
+        if (!isCoordinator) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        event.completed = true;
+        await event.save();
+
+        res.json(event);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

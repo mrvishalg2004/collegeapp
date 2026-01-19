@@ -14,6 +14,8 @@ export default function CollegeList() {
     const [newCollegeEmail, setNewCollegeEmail] = useState('');
     const [newCollegePassword, setNewCollegePassword] = useState('');
 
+    const [editingCollege, setEditingCollege] = useState<ICollege | null>(null);
+
     useEffect(() => {
         fetchColleges();
     }, []);
@@ -30,23 +32,74 @@ export default function CollegeList() {
         }
     };
 
-    const handleCreateCollege = async () => {
+    const handleSaveCollege = async () => {
         if (!newCollegeName || !newCollegeEmail) {
-            Alert.alert("Error", "Please fill all fields");
+            Alert.alert("Error", "Please fill name and email");
             return;
         }
 
         try {
-            await CollegeService.createCollege({ name: newCollegeName, email: newCollegeEmail, password: newCollegePassword });
-            setModalVisible(false);
-            setNewCollegeName('');
-            setNewCollegeEmail('');
-            setNewCollegePassword('');
+            if (editingCollege) {
+                // Update
+                await CollegeService.updateCollege(editingCollege._id, {
+                    name: newCollegeName,
+                    email: newCollegeEmail
+                    // Password update not supported in this simple view mainly to avoid complexity
+                });
+                Alert.alert("Success", "College Updated");
+            } else {
+                // Create
+                await CollegeService.createCollege({ name: newCollegeName, email: newCollegeEmail, password: newCollegePassword });
+                Alert.alert("Success", "College Created");
+            }
+            closeModal();
             fetchColleges();
-            Alert.alert("Success", "College Created");
-        } catch (error) {
-            Alert.alert("Error", error.response?.data?.message || "Failed to create college");
+        } catch (error: any) {
+            Alert.alert("Error", error.response?.data?.message || "Failed to save college");
         }
+    };
+
+    const openCreateModal = () => {
+        setEditingCollege(null);
+        setNewCollegeName('');
+        setNewCollegeEmail('');
+        setNewCollegePassword('');
+        setModalVisible(true);
+    };
+
+    const openEditModal = (college: ICollege) => {
+        setEditingCollege(college);
+        setNewCollegeName(college.name);
+        setNewCollegeEmail(college.email);
+        setNewCollegePassword(''); // Don't show password
+        setModalVisible(true);
+    };
+
+    const closeModal = () => {
+        setModalVisible(false);
+        setEditingCollege(null);
+    };
+
+    const handleToggleStatus = (college: ICollege) => {
+        const newStatus = college.status === 'active' ? 'inactive' : 'active';
+        Alert.alert(
+            "Confirm Status Change",
+            `Change status to ${newStatus}?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Confirm",
+                    onPress: async () => {
+                        try {
+                            await CollegeService.updateCollege(college._id, { status: newStatus });
+                            fetchColleges();
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleDeleteCollege = (id: string) => {
@@ -78,12 +131,18 @@ export default function CollegeList() {
                 <Text style={styles.collegeEmail}>{item.email}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-                <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>{item.status}</Text>
-                </View>
-                <TouchableOpacity onPress={() => handleDeleteCollege(item._id)} style={{ marginTop: 10 }}>
-                    <Ionicons name="trash-outline" size={20} color="red" />
+                <TouchableOpacity onPress={() => handleToggleStatus(item)} style={[styles.statusBadge, { backgroundColor: item.status === 'active' ? '#E8F5E9' : '#FFEBEE' }]}>
+                    <Text style={[styles.statusText, { color: item.status === 'active' ? '#2E7D32' : '#C62828' }]}>{item.status}</Text>
                 </TouchableOpacity>
+
+                <View style={{ flexDirection: 'row', marginTop: 10 }}>
+                    <TouchableOpacity onPress={() => openEditModal(item)} style={{ marginRight: 15 }}>
+                        <Ionicons name="pencil-outline" size={20} color="#2196F3" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteCollege(item._id)}>
+                        <Ionicons name="trash-outline" size={20} color="#F44336" />
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
@@ -95,7 +154,7 @@ export default function CollegeList() {
                     {/* Back button if not using header title */}
                 </TouchableOpacity>
                 <Text style={styles.title}>Colleges</Text>
-                <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+                <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
                     <Ionicons name="add" size={24} color="#fff" />
                 </TouchableOpacity>
             </View>
@@ -116,11 +175,11 @@ export default function CollegeList() {
                 visible={modalVisible}
                 animationType="slide"
                 transparent={true}
-                onRequestClose={() => setModalVisible(false)}
+                onRequestClose={closeModal}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Add New College</Text>
+                        <Text style={styles.modalTitle}>{editingCollege ? 'Edit College' : 'Add New College'}</Text>
 
                         <TextInput
                             style={styles.input}
@@ -136,19 +195,21 @@ export default function CollegeList() {
                             value={newCollegeEmail}
                             onChangeText={setNewCollegeEmail}
                         />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Admin Password"
-                            secureTextEntry
-                            value={newCollegePassword}
-                            onChangeText={setNewCollegePassword}
-                        />
+                        {!editingCollege && (
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Admin Password"
+                                secureTextEntry
+                                value={newCollegePassword}
+                                onChangeText={setNewCollegePassword}
+                            />
+                        )}
 
                         <View style={styles.modalActions}>
-                            <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setModalVisible(false)}>
+                            <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={closeModal}>
                                 <Text style={styles.cancelText}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleCreateCollege}>
+                            <TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSaveCollege}>
                                 <Text style={styles.saveText}>Save</Text>
                             </TouchableOpacity>
                         </View>

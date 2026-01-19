@@ -93,30 +93,34 @@ router.post('/verify', auth, async (req, res) => {
 });
 
 // @route   GET api/payments/pending
-// @desc    Get pending offline payments (College Admin)
-// @access  Private (College)
+// @desc    Get pending offline payments (College Admin & Coordinator)
+// @access  Private (College, Coordinator)
 router.get('/pending', auth, async (req, res) => {
-    if (req.user.role !== 'college') {
+    if (req.user.role !== 'college' && req.user.role !== 'coordinator') {
         return res.status(403).json({ message: 'Access denied' });
     }
 
     try {
-        // Need to find registrations for events belonging to this college
-        // 1. Find all events for this college
-        const user = await req.user; // auth middleware adds user object but let's re-fetch to be safe if needed,
-        // actually existing auth middleware attaches decoded token payload to req.user: { id, role }
-        // We need the College ID associated with this user.
-        // Wait, the JWT payload might not have collegeId. Let's check auth.js or fetch user.
+        let eventIds = [];
 
-        const User = require('../models/User');
-        const adminUser = await User.findById(req.user.id);
+        if (req.user.role === 'coordinator') {
+            // Coordinator: only assigned events
+            const assignedEvents = await Event.find({
+                $or: [
+                    { coordinators: req.user.id },
+                    { coordinatorId: req.user.id }
+                ]
+            });
+            eventIds = assignedEvents.map(e => e._id);
+        } else {
+            // College Admin: all college events
+            const User = require('../models/User');
+            const adminUser = await User.findById(req.user.id);
+            if (!adminUser.collegeId) return res.status(400).json({ message: 'No college' });
 
-        if (!adminUser.collegeId) {
-            return res.status(400).json({ message: 'User not associated with a college' });
+            const events = await Event.find({ collegeId: adminUser.collegeId });
+            eventIds = events.map(e => e._id);
         }
-
-        const events = await Event.find({ collegeId: adminUser.collegeId });
-        const eventIds = events.map(e => e._id);
 
         const registrations = await Registration.find({
             eventId: { $in: eventIds },
@@ -164,10 +168,10 @@ router.post('/offline', auth, async (req, res) => {
 });
 
 // @route   POST api/payments/confirm-offline/:id
-// @desc    Confirm offline payment (College Admin)
-// @access  Private (College)
+// @desc    Confirm offline payment (College Admin & Coordinator)
+// @access  Private (College, Coordinator)
 router.post('/confirm-offline/:id', auth, async (req, res) => {
-    if (req.user.role !== 'college') {
+    if (req.user.role !== 'college' && req.user.role !== 'coordinator') {
         return res.status(403).json({ message: 'Access denied' });
     }
 

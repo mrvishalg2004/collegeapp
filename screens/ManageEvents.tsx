@@ -8,7 +8,7 @@ import { AuthService } from '../services/auth.service';
 import { IEvent, IDepartment } from '../types';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-export default function ManageEvents() {
+export default function ManageEvents({ navigation }: any) {
     const [events, setEvents] = useState<IEvent[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
 
@@ -20,9 +20,11 @@ export default function ManageEvents() {
     const [venue, setVenue] = useState('');
     const [maxParticipants, setMaxParticipants] = useState('100');
     const [selectedDept, setSelectedDept] = useState('');
-    const [coordId, setCoordId] = useState('');
+    // const [coordId, setCoordId] = useState(''); // Deprecated
+    const [selectedCoordinators, setSelectedCoordinators] = useState<string[]>([]);
 
     const [departments, setDepartments] = useState<IDepartment[]>([]);
+    const [availableCoordinators, setAvailableCoordinators] = useState<any[]>([]); // New list
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
@@ -37,6 +39,12 @@ export default function ManageEvents() {
             setEvents(evs as IEvent[]);
             const depts = await CollegeService.getDepartments(u.collegeId);
             setDepartments(depts);
+
+            // Fetch Coordinators
+            try {
+                const coords = await CollegeService.getCoordinators();
+                setAvailableCoordinators(coords);
+            } catch (e) { console.error("Failed to fetch coords", e); }
         }
     };
 
@@ -48,16 +56,27 @@ export default function ManageEvents() {
                 venue,
                 fee: Number(fee),
                 maxParticipants: Number(maxParticipants),
-                departmentId: selectedDept || null, // Ensure null if empty
-                coordinatorId: coordId || null // Ensure null if empty
+                departmentId: selectedDept || null,
+                coordinators: selectedCoordinators // Send array
             });
             setModalVisible(false);
+            // Reset
+            setName(''); setFee(''); setVenue(''); setMaxParticipants('100'); setSelectedCoordinators([]);
             loadData();
             Alert.alert("Success", "Event Created");
         } catch (e: any) {
             console.error("Event Create Error:", e);
             const errorMsg = e.response?.data?.message || e.message || "Failed to create event";
             Alert.alert("Error", errorMsg);
+        }
+    };
+
+    // Toggle coordinator selection
+    const toggleCoordinator = (id: string) => {
+        if (selectedCoordinators.includes(id)) {
+            setSelectedCoordinators(prev => prev.filter(c => c !== id));
+        } else {
+            setSelectedCoordinators(prev => [...prev, id]);
         }
     };
 
@@ -100,9 +119,14 @@ export default function ManageEvents() {
                     <Text>Fee: ₹{item.fee}</Text>
                     <Text style={styles.subtitle}>{item.venue}</Text>
                 </View>
-                <TouchableOpacity onPress={() => confirmDelete(item._id)} style={{ padding: 10 }}>
-                    <Ionicons name="trash-outline" size={24} color="#F44336" />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity onPress={() => navigation.navigate('EventRegistrations', { eventId: item._id, eventName: item.name })} style={{ padding: 10 }}>
+                        <Ionicons name="people-outline" size={24} color="#4CAF50" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => confirmDelete(item._id)} style={{ padding: 10 }}>
+                        <Ionicons name="trash-outline" size={24} color="#F44336" />
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
@@ -154,7 +178,29 @@ export default function ManageEvents() {
                         <Text style={styles.label}>Details</Text>
                         <TextInput style={styles.input} placeholder="Fee (0 for free)" keyboardType="numeric" value={fee} onChangeText={setFee} />
                         <TextInput style={styles.input} placeholder="Max Participants" keyboardType="numeric" value={maxParticipants} onChangeText={setMaxParticipants} />
-                        <TextInput style={styles.input} placeholder="Coordinator ID (Optional)" value={coordId} onChangeText={setCoordId} />
+                        <TextInput style={styles.input} placeholder="Max Participants" keyboardType="numeric" value={maxParticipants} onChangeText={setMaxParticipants} />
+
+                        <Text style={styles.label}>Assign Coordinators:</Text>
+                        <View style={styles.coordList}>
+                            {availableCoordinators.length > 0 ? availableCoordinators.map((c: any) => (
+                                <TouchableOpacity
+                                    key={c._id}
+                                    style={[styles.coordItem, selectedCoordinators.includes(c._id) && styles.selectedCoord]}
+                                    onPress={() => toggleCoordinator(c._id)}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Ionicons
+                                            name={selectedCoordinators.includes(c._id) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedCoordinators.includes(c._id) ? "#fff" : "#666"}
+                                        />
+                                        <Text style={[styles.coordName, selectedCoordinators.includes(c._id) && { color: '#fff' }]}>{c.name}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            )) : (
+                                <Text style={{ color: '#999', fontStyle: 'italic' }}>No coordinators found. Create them first.</Text>
+                            )}
+                        </View>
 
                         <Text style={styles.label}>Select Department (Optional):</Text>
                         <View style={styles.deptList}>
@@ -202,6 +248,12 @@ const styles = StyleSheet.create({
     deptList: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
     chip: { padding: 8, backgroundColor: '#eee', borderRadius: 20, marginRight: 8, marginBottom: 8 },
     selectedChip: { backgroundColor: '#2196F3' },
+
+    coordList: { marginBottom: 20, maxHeight: 150 }, // Allow scrolling if needed but FlatList inside ScrollView warns
+    coordItem: { flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: '#f0f0f0', borderRadius: 8, marginBottom: 5 },
+    selectedCoord: { backgroundColor: '#4CAF50' },
+    coordName: { marginLeft: 10, fontSize: 16 },
+
     submitBtn: { backgroundColor: '#2196F3', padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 10 },
     submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
     closeBtn: { padding: 15, alignItems: 'center' }

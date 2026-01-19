@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const EventSchema = new mongoose.Schema({
     collegeId: { type: mongoose.Schema.Types.ObjectId, ref: 'College', required: true },
     departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' }, // Optional (if college-wide)
-    coordinatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    coordinators: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Multiple Coordinators
+    coordinatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Deprecated, keeping for backward compat if needed (but we will migrate logic)
     name: { type: String, required: true },
     description: String,
     date: { type: Date, required: true },

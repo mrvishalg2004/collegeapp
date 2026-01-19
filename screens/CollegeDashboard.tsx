@@ -41,6 +41,11 @@ export default function CollegeDashboard() {
                         <Text style={styles.cardText}>Events</Text>
                     </TouchableOpacity>
 
+                    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('ManageCoordinators')}>
+                        <Ionicons name="people" size={32} color="#9C27B0" />
+                        <Text style={styles.cardText}>Coordinators</Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('VerifyPayments')}>
                         <Ionicons name="cash-outline" size={32} color="#FF9800" />
                         <Text style={styles.cardText}>Verify Payments</Text>

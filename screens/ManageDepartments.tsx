@@ -13,6 +13,8 @@ export default function ManageDepartments() {
     const [newDeptName, setNewDeptName] = useState('');
     const [user, setUser] = useState<any>(null);
 
+    const [editingDept, setEditingDept] = useState<IDepartment | null>(null);
+
     useEffect(() => {
         loadData();
     }, []);
@@ -32,23 +34,61 @@ export default function ManageDepartments() {
         }
     }
 
-    const handleAddDept = async () => {
+    const handleSaveDept = async () => {
         if (!newDeptName) return;
 
         try {
-            await CollegeService.addDepartment({ name: newDeptName });
-            setModalVisible(false);
-            setNewDeptName('');
+            if (editingDept) {
+                await CollegeService.updateDepartment(editingDept._id, newDeptName);
+                Alert.alert("Success", "Department Updated");
+            } else {
+                await CollegeService.addDepartment({ name: newDeptName });
+                Alert.alert("Success", "Department Added");
+            }
+            closeModal();
             loadData();
-            Alert.alert("Success", "Department Added");
         } catch (error) {
             Alert.alert("Error", (error as any).response?.data?.message || "Failed");
         }
     };
 
+    const handleDelete = (id: string) => {
+        Alert.alert("Confirm Delete", "Are you sure?", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete", style: "destructive", onPress: async () => {
+                    try {
+                        await CollegeService.deleteDepartment(id);
+                        loadData();
+                    } catch (e) { Alert.alert("Error", "Failed to delete"); }
+                }
+            }
+        ]);
+    };
+
+    const openEdit = (dept: IDepartment) => {
+        setEditingDept(dept);
+        setNewDeptName(dept.name);
+        setModalVisible(true);
+    };
+
+    const closeModal = () => {
+        setModalVisible(false);
+        setEditingDept(null);
+        setNewDeptName('');
+    };
+
     const renderItem = ({ item }: { item: IDepartment }) => (
         <View style={styles.card}>
             <Text style={styles.deptName}>{item.name}</Text>
+            <View style={{ flexDirection: 'row' }}>
+                <TouchableOpacity onPress={() => openEdit(item)} style={{ marginRight: 15 }}>
+                    <Ionicons name="pencil-outline" size={20} color="#2196F3" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDelete(item._id)}>
+                    <Ionicons name="trash-outline" size={20} color="#F44336" />
+                </TouchableOpacity>
+            </View>
         </View>
     );
 
@@ -78,11 +118,11 @@ export default function ManageDepartments() {
                 visible={modalVisible}
                 transparent={true}
                 animationType="fade"
-                onRequestClose={() => setModalVisible(false)}
+                onRequestClose={closeModal}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Add Department</Text>
+                        <Text style={styles.modalTitle}>{editingDept ? 'Edit' : 'Add'} Department</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Department Name"
@@ -90,10 +130,10 @@ export default function ManageDepartments() {
                             onChangeText={setNewDeptName}
                         />
                         <View style={styles.modalActions}>
-                            <TouchableOpacity style={[styles.btn, styles.cancelBtn]} onPress={() => setModalVisible(false)}>
+                            <TouchableOpacity style={[styles.btn, styles.cancelBtn]} onPress={closeModal}>
                                 <Text>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={[styles.btn, styles.saveBtn]} onPress={handleAddDept}>
+                            <TouchableOpacity style={[styles.btn, styles.saveBtn]} onPress={handleSaveDept}>
                                 <Text style={{ color: '#fff' }}>Save</Text>
                             </TouchableOpacity>
                         </View>
@@ -128,6 +168,9 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 10,
         marginBottom: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center'
     },
     deptName: { fontSize: 18, fontWeight: '500' },
     emptyText: { textAlign: 'center', marginTop: 20, color: '#999' },

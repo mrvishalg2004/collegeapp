@@ -16,8 +16,10 @@ import SystemReports from '../screens/SystemReports';
 import CollegeDashboard from '../screens/CollegeDashboard';
 import ManageDepartments from '../screens/ManageDepartments';
 import ManageEvents from '../screens/ManageEvents';
+import ManageCoordinators from '../screens/ManageCoordinators';
 import VerifyPayments from '../screens/VerifyPayments';
 import PaymentHistory from '../screens/PaymentHistory';
+import EventRegistrations from '../screens/EventRegistrations';
 
 // Coordinator Screens
 import CoordDashboard from '../screens/CoordDashboard';
@@ -88,8 +90,10 @@ const CollegeStack = () => (
         <Stack.Screen name="CollegeDashboard" component={CollegeDashboard} />
         <Stack.Screen name="ManageDepartments" component={ManageDepartments} />
         <Stack.Screen name="ManageEvents" component={ManageEvents} />
+        <Stack.Screen name="ManageCoordinators" component={ManageCoordinators} />
         <Stack.Screen name="VerifyPayments" component={VerifyPayments} />
         <Stack.Screen name="PaymentHistory" component={PaymentHistory} />
+        <Stack.Screen name="EventRegistrations" component={EventRegistrations} />
     </Stack.Navigator>
 );
 
@@ -97,6 +101,7 @@ const CoordStack = () => (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="CoordDashboard" component={CoordDashboard} />
         <Stack.Screen name="EventAttendance" component={EventAttendance} />
+        <Stack.Screen name="VerifyPayments" component={VerifyPayments} />
     </Stack.Navigator>
 );
 

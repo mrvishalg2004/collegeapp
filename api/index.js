@@ -3,10 +3,14 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
+const path = require('path');
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+console.log('Serving static files from:', path.join(__dirname, 'public'));
+app.use('/public', express.static(path.join(__dirname, 'public'))); // Serve static files from api/public
 
 // Middleware
 app.use(cors());
@@ -55,12 +59,13 @@ app.use('/api/colleges', require('./routes/colleges'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/certificates', require('./routes/certificates'));
+app.use('/api/registrations', require('./routes/registrations'));
 
 app.get('/', (req, res) => {
     res.send('College Event Management API is Running');
 });
 
 // Start Server
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
 });

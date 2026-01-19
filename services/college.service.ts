@@ -22,8 +22,40 @@ export const CollegeService = {
         return response.data;
     },
 
+    // For Department Management
+    updateDepartment: async (id: string, name: string) => {
+        const response = await api.put(`/colleges/departments/${id}`, { name });
+        return response.data;
+    },
+
+    deleteDepartment: async (id: string) => {
+        const response = await api.delete(`/colleges/departments/${id}`);
+        return response.data;
+    },
+
     deleteCollege: async (id: string) => {
         const response = await api.delete(`/colleges/${id}`);
+        return response.data;
+    },
+
+    updateCollege: async (id: string, data: any) => {
+        const response = await api.put(`/colleges/${id}`, data);
+        return response.data;
+    },
+
+    // Coordinator Management
+    getCoordinators: async () => {
+        const response = await api.get('/colleges/coordinators');
+        return response.data;
+    },
+
+    createCoordinator: async (data: any) => {
+        const response = await api.post('/colleges/coordinators', data);
+        return response.data;
+    },
+
+    deleteCoordinator: async (id: string) => {
+        const response = await api.delete(`/colleges/coordinators/${id}`);
         return response.data;
     }
 };
