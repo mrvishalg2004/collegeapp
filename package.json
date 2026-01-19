@@ -1,0 +1,40 @@
+{
+  "name": "collegeapp",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-community/datetimepicker": "^8.4.4",
+    "@react-native-picker/picker": "^2.11.1",
+    "@react-navigation/native": "^7.1.28",
+    "@react-navigation/native-stack": "^7.10.1",
+    "axios": "^1.13.2",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "expo": "~54.0.31",
+    "expo-linear-gradient": "^15.0.8",
+    "expo-secure-store": "^15.0.8",
+    "expo-status-bar": "~3.0.9",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react-native": "^0.562.0",
+    "mongoose": "^9.1.4",
+    "nodemailer": "^7.0.12",
+    "razorpay": "^2.9.6",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-safe-area-context": "^5.6.2",
+    "react-native-screens": "~4.16.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
