@@ -6,18 +6,33 @@ const User = require('../models/User');
 
 // @route   POST api/events
 // @desc    Create an event
-// @access  Private (College Admin)
+// @access  Private (College Admin or Super Admin)
 router.post('/', auth, async (req, res) => {
-    if (req.user.role !== 'college') {
+    // Allow 'college' or 'admin'
+    if (req.user.role !== 'college' && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Access denied' });
     }
 
     try {
-        const user = await User.findById(req.user.id);
-
-        const { name, description, date, venue, fee, maxParticipants, departmentId, coordinators } = req.body;
-
+        const { name, description, date, venue, fee, maxParticipants, departmentId, coordinators, collegeId } = req.body;
         const mongoose = require('mongoose');
+
+        let targetCollegeId;
+
+        if (req.user.role === 'admin') {
+            // Super Admin MUST provide a collegeId
+            if (!collegeId) {
+                return res.status(400).json({ message: 'College ID is required for Super Admin' });
+            }
+            targetCollegeId = collegeId;
+        } else {
+            // College Admin: use their assigned collegeId
+            const user = await User.findById(req.user.id);
+            if (!user.collegeId) {
+                return res.status(400).json({ message: 'User does not belong to a college' });
+            }
+            targetCollegeId = user.collegeId;
+        }
 
         // Validation
         if (!date) return res.status(400).json({ message: 'Date is required' });
@@ -32,7 +47,7 @@ router.post('/', auth, async (req, res) => {
         }
 
         const event = new Event({
-            collegeId: user.collegeId,
+            collegeId: targetCollegeId,
             departmentId: departmentId || undefined,
             coordinators: validCoordinators,
             name,

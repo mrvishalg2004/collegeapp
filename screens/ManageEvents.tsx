@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { EventService } from '../services/event.service';
 import { CollegeService } from '../services/college.service';
 import { AuthService } from '../services/auth.service';
-import { IEvent, IDepartment } from '../types';
+import { IEvent, IDepartment, ICollege } from '../types';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function ManageEvents({ navigation }: any) {
@@ -27,6 +27,8 @@ export default function ManageEvents({ navigation }: any) {
     const [departments, setDepartments] = useState<IDepartment[]>([]);
     const [availableCoordinators, setAvailableCoordinators] = useState<any[]>([]); // New list
     const [user, setUser] = useState<any>(null);
+    const [colleges, setColleges] = useState<ICollege[]>([]);
+    const [selectedCollegeId, setSelectedCollegeId] = useState('');
 
     useEffect(() => {
         loadData();
@@ -36,21 +38,36 @@ export default function ManageEvents({ navigation }: any) {
         const u = await AuthService.getCurrentUser();
         setUser(u);
         if (u?.collegeId) {
+            setSelectedCollegeId(u.collegeId);
+            fetchCollegeData(u.collegeId);
             const evs = await EventService.getEvents({ collegeId: u.collegeId });
             setEvents(evs as IEvent[]);
-            const depts = await CollegeService.getDepartments(u.collegeId);
-            setDepartments(depts);
-
-            // Fetch Coordinators
-            try {
-                const coords = await CollegeService.getCoordinators();
-                setAvailableCoordinators(coords);
-            } catch (e) { console.error("Failed to fetch coords", e); }
+        } else {
+            // Super Admin: Fetch all colleges and events
+            const allColleges = await CollegeService.getColleges();
+            setColleges(allColleges as ICollege[]);
+            const evs = await EventService.getEvents();
+            setEvents(evs as IEvent[]);
         }
+    };
+
+    const fetchCollegeData = async (cId: string) => {
+        const depts = await CollegeService.getDepartments(cId);
+        setDepartments(depts);
+        // Try fetching coordinators - purely optional as it depends on backend context
+        try {
+            const coords = await CollegeService.getCoordinators();
+            setAvailableCoordinators(coords);
+        } catch (e) { console.log("Coordinator fetch skipped/failed"); }
     };
 
     const handleCreate = async () => {
         try {
+            if (!selectedCollegeId) {
+                Alert.alert("Error", "Please select a college");
+                return;
+            }
+
             await EventService.createEvent({
                 name,
                 description, // Pass description
@@ -59,7 +76,8 @@ export default function ManageEvents({ navigation }: any) {
                 fee: Number(fee),
                 maxParticipants: Number(maxParticipants),
                 departmentId: selectedDept || null,
-                coordinators: selectedCoordinators // Send array
+                coordinators: selectedCoordinators, // Send array
+                collegeId: selectedCollegeId
             });
             setModalVisible(false);
             // Reset
@@ -158,6 +176,27 @@ export default function ManageEvents({ navigation }: any) {
                     <ScrollView contentContainerStyle={styles.modalContent}>
                         <Text style={styles.modalTitle}>Create Event</Text>
 
+                        {/* College Selection for Super Admin */}
+                        {!user?.collegeId && (
+                            <View style={{ marginBottom: 15 }}>
+                                <Text style={styles.label}>Select College *</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                                    {colleges.map((c) => (
+                                        <TouchableOpacity
+                                            key={c._id}
+                                            style={[styles.chip, selectedCollegeId === c._id && styles.selectedChip]}
+                                            onPress={() => {
+                                                setSelectedCollegeId(c._id);
+                                                fetchCollegeData(c._id);
+                                            }}
+                                        >
+                                            <Text style={{ color: selectedCollegeId === c._id ? '#fff' : '#000' }}>{c.name}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+
                         <Text style={styles.label}>Basic Info</Text>
                         <TextInput style={styles.input} placeholder="Event Name" value={name} onChangeText={setName} />
                         <TextInput
@@ -187,7 +226,7 @@ export default function ManageEvents({ navigation }: any) {
                         <Text style={styles.label}>Details</Text>
                         <TextInput style={styles.input} placeholder="Fee (0 for free)" keyboardType="numeric" value={fee} onChangeText={setFee} />
                         <TextInput style={styles.input} placeholder="Max Participants" keyboardType="numeric" value={maxParticipants} onChangeText={setMaxParticipants} />
-                        <TextInput style={styles.input} placeholder="Max Participants" keyboardType="numeric" value={maxParticipants} onChangeText={setMaxParticipants} />
+
 
                         <Text style={styles.label}>Assign Coordinators:</Text>
                         <View style={styles.coordList}>

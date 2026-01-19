@@ -82,6 +82,8 @@ const AdminStack = () => (
         <Stack.Screen name="CollegeList" component={CollegeList} />
         <Stack.Screen name="EventMonitor" component={EventMonitor} />
         <Stack.Screen name="SystemReports" component={SystemReports} />
+        <Stack.Screen name="ManageEvents" component={ManageEvents} />
+        <Stack.Screen name="EventRegistrations" component={EventRegistrations} />
     </Stack.Navigator>
 );
 

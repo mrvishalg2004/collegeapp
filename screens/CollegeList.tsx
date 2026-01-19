@@ -126,21 +126,27 @@ export default function CollegeList() {
 
     const renderItem = ({ item }: { item: ICollege }) => (
         <View style={styles.card}>
-            <View style={styles.cardContent}>
-                <Text style={styles.collegeName}>{item.name}</Text>
-                <Text style={styles.collegeEmail}>{item.email}</Text>
+            {/* Logo Placeholder */}
+            <View style={styles.logoContainer}>
+                <Ionicons name="school" size={24} color="#546E7A" />
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-                <TouchableOpacity onPress={() => handleToggleStatus(item)} style={[styles.statusBadge, { backgroundColor: item.status === 'active' ? '#E8F5E9' : '#FFEBEE' }]}>
-                    <Text style={[styles.statusText, { color: item.status === 'active' ? '#2E7D32' : '#C62828' }]}>{item.status}</Text>
-                </TouchableOpacity>
 
-                <View style={{ flexDirection: 'row', marginTop: 10 }}>
-                    <TouchableOpacity onPress={() => openEditModal(item)} style={{ marginRight: 15 }}>
-                        <Ionicons name="pencil-outline" size={20} color="#2196F3" />
+            <View style={styles.cardContent}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Text style={styles.collegeName}>{item.name}</Text>
+                    <TouchableOpacity onPress={() => handleToggleStatus(item)} style={[styles.statusBadge, { backgroundColor: item.status === 'active' ? '#E8F5E9' : '#FFEBEE' }]}>
+                        <View style={[styles.statusDot, { backgroundColor: item.status === 'active' ? '#4CAF50' : '#F44336' }]} />
+                        <Text style={[styles.statusText, { color: item.status === 'active' ? '#4CAF50' : '#F44336' }]}>{item.status.toUpperCase()}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeleteCollege(item._id)}>
-                        <Ionicons name="trash-outline" size={20} color="#F44336" />
+                </View>
+                <Text style={styles.collegeEmail}>{item.email}</Text>
+
+                <View style={styles.actionRow}>
+                    <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
+                        <Ionicons name="pencil-outline" size={18} color="#546E7A" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteCollege(item._id)} style={styles.iconBtn}>
+                        <Ionicons name="trash-outline" size={18} color="#546E7A" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -150,13 +156,13 @@ export default function CollegeList() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => { /* Navigation back handled by stack */ }}>
-                    {/* Back button if not using header title */}
-                </TouchableOpacity>
-                <Text style={styles.title}>Colleges</Text>
-                <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
-                    <Ionicons name="add" size={24} color="#fff" />
-                </TouchableOpacity>
+                <Text style={styles.superTitle}>SUPER ADMIN</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.title}>Manage Colleges</Text>
+                    <TouchableOpacity style={styles.searchBtn}>
+                        <Ionicons name="search" size={20} color="#333" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {loading ? (
@@ -168,8 +174,14 @@ export default function CollegeList() {
                     keyExtractor={(item) => item._id}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={<Text style={styles.emptyText}>No colleges found</Text>}
+                    showsVerticalScrollIndicator={false}
                 />
             )}
+
+            {/* Floating Action Button for Add */}
+            <TouchableOpacity style={styles.fab} onPress={openCreateModal}>
+                <Ionicons name="add" size={32} color="#fff" />
+            </TouchableOpacity>
 
             <Modal
                 visible={modalVisible}
@@ -179,38 +191,64 @@ export default function CollegeList() {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>{editingCollege ? 'Edit College' : 'Add New College'}</Text>
+                        <View style={styles.modalHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <View style={styles.modalIconBox}>
+                                    <Ionicons name="school" size={20} color="#000" />
+                                </View>
+                                <Text style={styles.modalTitle}>{editingCollege ? 'Edit College' : 'Add New College'}</Text>
+                            </View>
+                            <TouchableOpacity onPress={closeModal}>
+                                <Ionicons name="close" size={24} color="#333" />
+                            </TouchableOpacity>
+                        </View>
 
+                        <Text style={styles.modalSubtitle}>Enter the institutional credentials to register a new campus.</Text>
+
+                        <Text style={styles.label}>College Name</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="College Name"
+                            placeholder="e.g. Stanford University"
                             value={newCollegeName}
                             onChangeText={setNewCollegeName}
                         />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Admin Email"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            value={newCollegeEmail}
-                            onChangeText={setNewCollegeEmail}
-                        />
-                        {!editingCollege && (
+
+                        <Text style={styles.label}>Admin Email</Text>
+                        <View style={styles.inputWrapper}>
                             <TextInput
-                                style={styles.input}
-                                placeholder="Admin Password"
-                                secureTextEntry
-                                value={newCollegePassword}
-                                onChangeText={setNewCollegePassword}
+                                style={[styles.input, { marginBottom: 0, borderWidth: 0, flex: 1 }]}
+                                placeholder="admin@college.edu"
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                value={newCollegeEmail}
+                                onChangeText={setNewCollegeEmail}
                             />
+                            <Ionicons name="at" size={20} color="#999" />
+                        </View>
+
+                        {!editingCollege && (
+                            <>
+                                <Text style={styles.label}>Access Password</Text>
+                                <View style={styles.inputWrapper}>
+                                    <TextInput
+                                        style={[styles.input, { marginBottom: 0, borderWidth: 0, flex: 1 }]}
+                                        placeholder="••••••••"
+                                        secureTextEntry
+                                        value={newCollegePassword}
+                                        onChangeText={setNewCollegePassword}
+                                    />
+                                    <Ionicons name="eye" size={20} color="#999" />
+                                </View>
+                            </>
                         )}
 
                         <View style={styles.modalActions}>
-                            <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={closeModal}>
+                            <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
                                 <Text style={styles.cancelText}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSaveCollege}>
-                                <Text style={styles.saveText}>Save</Text>
+                            <TouchableOpacity style={styles.saveButton} onPress={handleSaveCollege}>
+                                <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 5 }} />
+                                <Text style={styles.saveText}>Save College</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -224,119 +262,213 @@ export default function CollegeList() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f0f2f5',
+        backgroundColor: '#F5F7FA',
     },
     header: {
         padding: 20,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         backgroundColor: '#fff',
     },
-    title: {
-        fontSize: 22,
+    superTitle: {
+        color: '#26C6DA',
+        fontSize: 12,
         fontWeight: 'bold',
+        letterSpacing: 1,
+        marginBottom: 5
     },
-    addButton: {
-        backgroundColor: '#2196F3',
+    title: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: '#263238',
+    },
+    searchBtn: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
+        backgroundColor: '#F5F5F5',
+        justifyContent: 'center', alignItems: 'center'
     },
     list: {
         padding: 20,
+        paddingBottom: 100 // Space for bottom bar
     },
     card: {
         backgroundColor: '#fff',
         padding: 20,
-        borderRadius: 12,
+        borderRadius: 20,
         marginBottom: 15,
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 5 },
+        alignItems: 'flex-start'
+    },
+    logoContainer: {
+        width: 50,
+        height: 50,
+        borderRadius: 15,
+        backgroundColor: '#ECEFF1',
+        justifyContent: 'center',
         alignItems: 'center',
-        elevation: 2,
+        marginRight: 15,
     },
     cardContent: {
         flex: 1,
     },
     collegeName: {
         fontSize: 18,
-        fontWeight: '600',
-        color: '#333',
+        fontWeight: 'bold',
+        color: '#263238',
+        flex: 1,
+        marginRight: 10
     },
     collegeEmail: {
         fontSize: 14,
-        color: '#666',
-        marginTop: 4,
+        color: '#78909C',
+        marginTop: 2,
     },
     statusBadge: {
-        backgroundColor: '#E8F5E9',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+    },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        marginRight: 5
     },
     statusText: {
-        color: '#2E7D32',
-        fontSize: 12,
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
+        fontSize: 10,
+        fontWeight: 'bold'
     },
+    actionRow: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginTop: 15,
+        gap: 10
+    },
+    iconBtn: {
+        width: 35,
+        height: 35,
+        borderRadius: 10,
+        backgroundColor: '#F5F7FA',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    // FAB
+    fab: {
+        position: 'absolute',
+        bottom: 85,
+        right: 25,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#009688',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 10,
+        shadowColor: '#009688',
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 5 }
+    },
+
+
     emptyText: {
         textAlign: 'center',
         color: '#666',
         marginTop: 20,
     },
+
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        padding: 20,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'flex-end',
     },
     modalContent: {
         backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 25,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        padding: 30,
+        minHeight: 500
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10
+    },
+    modalIconBox: {
+        marginRight: 10
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
+        color: '#263238'
+    },
+    modalSubtitle: {
+        color: '#78909C',
+        marginBottom: 25,
+        fontSize: 14
+    },
+    label: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#37474F',
+        marginBottom: 8
     },
     input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 10,
-        padding: 12,
-        marginBottom: 15,
+        backgroundColor: '#F5F7FA',
+        borderRadius: 12,
+        padding: 15,
+        marginBottom: 20,
         fontSize: 16,
+        color: '#333'
+    },
+    inputWrapper: {
+        backgroundColor: '#F5F7FA',
+        borderRadius: 12,
+        paddingHorizontal: 15,
+        marginBottom: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 52
     },
     modalActions: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 10,
-    },
-    modalButton: {
-        flex: 1,
-        padding: 15,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginHorizontal: 5,
+        marginTop: 20,
     },
     cancelButton: {
-        backgroundColor: '#f5f5f5',
+        flex: 1,
+        backgroundColor: '#F5F5F5',
+        padding: 18,
+        borderRadius: 15,
+        alignItems: 'center',
+        marginRight: 10
     },
     saveButton: {
-        backgroundColor: '#3b5998',
+        flex: 1.5,
+        backgroundColor: '#26C6DA',
+        padding: 18,
+        borderRadius: 15,
+        alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center'
     },
     cancelText: {
-        color: '#333',
-        fontWeight: '600',
+        color: '#546E7A',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
     saveText: {
         color: '#fff',
-        fontWeight: '600',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
 });
