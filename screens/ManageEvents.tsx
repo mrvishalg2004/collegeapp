@@ -14,6 +14,7 @@ export default function ManageEvents({ navigation }: any) {
 
     // Form State
     const [name, setName] = useState('');
+    const [description, setDescription] = useState(''); // Added description
     const [date, setDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [fee, setFee] = useState('');
@@ -52,6 +53,7 @@ export default function ManageEvents({ navigation }: any) {
         try {
             await EventService.createEvent({
                 name,
+                description, // Pass description
                 date: date,
                 venue,
                 fee: Number(fee),
@@ -61,7 +63,7 @@ export default function ManageEvents({ navigation }: any) {
             });
             setModalVisible(false);
             // Reset
-            setName(''); setFee(''); setVenue(''); setMaxParticipants('100'); setSelectedCoordinators([]);
+            setName(''); setDescription(''); setFee(''); setVenue(''); setMaxParticipants('100'); setSelectedCoordinators([]);
             loadData();
             Alert.alert("Success", "Event Created");
         } catch (e: any) {
@@ -158,6 +160,13 @@ export default function ManageEvents({ navigation }: any) {
 
                         <Text style={styles.label}>Basic Info</Text>
                         <TextInput style={styles.input} placeholder="Event Name" value={name} onChangeText={setName} />
+                        <TextInput
+                            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                            placeholder="Event Description (What's this event about?)"
+                            value={description}
+                            onChangeText={setDescription}
+                            multiline
+                        />
                         <TextInput style={styles.input} placeholder="Venue" value={venue} onChangeText={setVenue} />
 
                         <Text style={styles.label}>Event Date</Text>

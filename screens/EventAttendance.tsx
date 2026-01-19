@@ -33,6 +33,7 @@ export default function EventAttendance() {
         setRegistrations(prev => prev.map((r: any) => r._id === id ? { ...r, attendance: !currentStatus } : r));
         try {
             await api.put(`/registrations/${id}/attendance`, { status: !currentStatus });
+            Alert.alert("Success", `Attendance marked ${!currentStatus ? 'Present' : 'Absent'}`);
         } catch (e) {
             Alert.alert("Error", "Failed to update");
             // Revert
