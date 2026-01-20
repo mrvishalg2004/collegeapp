@@ -80,7 +80,8 @@ router.get('/', async (req, res) => {
         const events = await Event.find(query)
             .populate('departmentId', 'name')
             .populate('coordinators', 'name email')
-            .populate('coordinatorId', 'name'); // Legacy population
+            .populate('coordinatorId', 'name') // Legacy population
+            .sort({ createdAt: -1 });
         res.json(events);
     } catch (err) {
         console.error(err.message);
@@ -165,7 +166,7 @@ router.delete('/:id', auth, async (req, res) => {
 // @desc    Mark event as completed (Coordinator only)
 // @access  Private (Coordinator)
 router.put('/:id/complete', auth, async (req, res) => {
-    if (req.user.role !== 'coordinator') {
+    if (req.user.role !== 'coordinator' && req.user.role !== 'college' && req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -173,11 +174,23 @@ router.put('/:id/complete', auth, async (req, res) => {
         const event = await Event.findById(req.params.id);
         if (!event) return res.status(404).json({ message: 'Event not found' });
 
-        const isCoordinator = (event.coordinators && event.coordinators.includes(req.user.id)) ||
-            (event.coordinatorId && event.coordinatorId.toString() === req.user.id);
+        if (req.user.role === 'college') {
+            const User = require('../models/User');
+            const user = await User.findById(req.user.id);
+            if (event.collegeId.toString() !== user.collegeId.toString()) {
+                return res.status(401).json({ message: 'Not authorized for this event' });
+            }
+        } else if (req.user.role === 'coordinator') {
+            const isCoordinator = (event.coordinators && event.coordinators.includes(req.user.id)) ||
+                (event.coordinatorId && event.coordinatorId.toString() === req.user.id);
 
-        if (!isCoordinator) {
-            return res.status(401).json({ message: 'Not authorized' });
+            if (!isCoordinator) {
+                return res.status(401).json({ message: 'Not authorized' });
+            }
+        } else if (req.user.role === 'admin') {
+            // Super Admin can complete any event
+        } else {
+            return res.status(403).json({ message: 'Access denied' });
         }
 
         event.completed = true;

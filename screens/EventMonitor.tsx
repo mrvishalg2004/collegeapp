@@ -136,6 +136,28 @@ export default function EventMonitor() {
         );
     };
 
+    const confirmComplete = (id: string) => {
+        Alert.alert(
+            "Complete Event",
+            "Mark this event as completed? It will be closed for all users.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Complete",
+                    onPress: async () => {
+                        try {
+                            await EventService.completeEvent(id);
+                            loadData();
+                            Alert.alert("Success", "Event marked as completed");
+                        } catch (e: any) {
+                            Alert.alert("Error", e.response?.data?.message || "Failed to update");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const renderItem = ({ item }: { item: IEvent }) => (
         <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -160,9 +182,16 @@ export default function EventMonitor() {
                 </View>
             </View>
 
-            <TouchableOpacity onPress={() => confirmDelete(item._id)} style={styles.deleteBtn}>
-                <Ionicons name="trash" size={20} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.actionButtons}>
+                {!item.completed && (
+                    <TouchableOpacity onPress={() => confirmComplete(item._id)} style={styles.completeBtn}>
+                        <Ionicons name="checkmark" size={20} color="#fff" />
+                    </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => confirmDelete(item._id)} style={styles.deleteBtn}>
+                    <Ionicons name="trash" size={20} color="#fff" />
+                </TouchableOpacity>
+            </View>
         </View>
     );
 
@@ -418,7 +447,8 @@ const styles = StyleSheet.create({
         letterSpacing: 1
     },
     cardContent: {
-        paddingRight: 50 // Space for delete btn
+        paddingRight: 0,
+        marginTop: 10
     },
     eventName: {
         fontSize: 20,
@@ -436,9 +466,6 @@ const styles = StyleSheet.create({
         color: '#90A4AE',
     },
     deleteBtn: {
-        position: 'absolute',
-        right: 20,
-        top: 45,
         width: 45,
         height: 45,
         borderRadius: 22.5,
@@ -448,7 +475,26 @@ const styles = StyleSheet.create({
         elevation: 5,
         shadowColor: '#F44336',
         shadowOpacity: 0.4,
+        shadowRadius: 8,
+        marginLeft: 10
+    },
+    completeBtn: {
+        width: 45,
+        height: 45,
+        borderRadius: 22.5,
+        backgroundColor: '#00E676',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#00E676',
+        shadowOpacity: 0.4,
         shadowRadius: 8
+    },
+    actionButtons: {
+        position: 'absolute',
+        right: 20,
+        top: 20,
+        flexDirection: 'row'
     },
     empty: {
         textAlign: 'center',

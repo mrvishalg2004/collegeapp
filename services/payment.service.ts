@@ -19,5 +19,15 @@ export const PaymentService = {
     getPaymentHistory: async () => {
         const response = await api.get('/payments/history');
         return response.data;
+    },
+
+    getPendingPayments: async () => {
+        const response = await api.get('/payments/pending');
+        return response.data;
+    },
+
+    confirmOfflinePayment: async (id: string) => {
+        const response = await api.post(`/payments/confirm-offline/${id}`);
+        return response.data;
     }
 };

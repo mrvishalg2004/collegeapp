@@ -32,6 +32,7 @@ export interface IEvent {
     departmentId?: IDepartment | string; // Populated or ID
     coordinatorId?: string;
     completed: boolean;
+    createdAt?: string;
 }
 
 export interface IRegistration {

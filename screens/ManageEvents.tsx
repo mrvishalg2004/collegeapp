@@ -123,6 +123,28 @@ export default function ManageEvents({ navigation }: any) {
         );
     };
 
+    const confirmComplete = (id: string) => {
+        Alert.alert(
+            "Complete Event",
+            "Mark this event as completed? This will allow certificate generation.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Complete",
+                    onPress: async () => {
+                        try {
+                            await EventService.completeEvent(id);
+                            loadData();
+                            Alert.alert("Success", "Event marked as completed");
+                        } catch (e: any) {
+                            Alert.alert("Error", e.response?.data?.message || "Failed");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const onDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(Platform.OS === 'ios');
         if (selectedDate) {
@@ -134,12 +156,17 @@ export default function ManageEvents({ navigation }: any) {
         <View style={styles.card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.eventName}>{item.name}</Text>
+                    <Text style={styles.eventName}>{item.name} {item.completed && <Text style={{ color: 'green', fontSize: 14 }}>(Completed)</Text>}</Text>
                     <Text>{new Date(item.date).toDateString()}</Text>
                     <Text>Fee: ₹{item.fee}</Text>
                     <Text style={styles.subtitle}>{item.venue}</Text>
                 </View>
                 <View style={{ flexDirection: 'row' }}>
+                    {!item.completed && (
+                        <TouchableOpacity onPress={() => confirmComplete(item._id)} style={{ padding: 10 }}>
+                            <Ionicons name="checkmark-done-circle-outline" size={24} color="#2196F3" />
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity onPress={() => navigation.navigate('EventRegistrations', { eventId: item._id, eventName: item.name })} style={{ padding: 10 }}>
                         <Ionicons name="people-outline" size={24} color="#4CAF50" />
                     </TouchableOpacity>

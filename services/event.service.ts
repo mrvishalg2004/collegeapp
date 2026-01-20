@@ -20,5 +20,10 @@ export const EventService = {
     deleteEvent: async (id: string) => {
         const response = await api.delete(`/events/${id}`);
         return response.data;
+    },
+
+    completeEvent: async (id: string) => {
+        const response = await api.put(`/events/${id}/complete`);
+        return response.data;
     }
 };
