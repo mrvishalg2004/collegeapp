@@ -58,7 +58,9 @@ router.post('/generate', auth, async (req, res) => {
         // For development, we store the relative path or a constructed URL if we know the host
         // Best to store relative and prepend base URL on client, OR store full URL here if we know env.
         // Let's assume common IP for now or use relative.
-        const pdfUrl = `http://192.168.1.4:3000${relativePath}`;
+        // Store relative path, let client handle base URL OR use env variable
+        const baseUrl = process.env.BASE_URL || 'http://192.168.1.4:3000';
+        const pdfUrl = `${baseUrl}${relativePath}`;
 
         let certificate = new Certificate({
             registrationId: registration._id,

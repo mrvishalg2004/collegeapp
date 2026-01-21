@@ -21,12 +21,18 @@ api.interceptors.request.use(
             token = await SecureStore.getItemAsync('token');
         }
 
-        if (token) {
+        if (token && config.headers) {
             config.headers['x-auth-token'] = token;
         }
         return config;
     },
     (error) => {
+        console.error('API Error:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            url: error.config?.url
+        });
         return Promise.reject(error);
     }
 );

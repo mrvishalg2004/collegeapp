@@ -125,9 +125,8 @@ export default function StudentDashboard() {
 
     const handleDownloadCert = (url: string) => {
         if (url) {
-            // Fix for potentially mismatched IP in development
-            const correctUrl = url.replace('192.168.1.5', '192.168.1.4');
-            Linking.openURL(correctUrl).catch((err) => {
+            // Open the URL directly
+            Linking.openURL(url).catch((err) => {
                 console.error("Download Error:", err);
                 Alert.alert("Error", "Cannot open URL");
             });
