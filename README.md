@@ -47,6 +47,8 @@ npm install
 
 The project consists of two parts that need to be run simultaneously:
 
+**Note for Windows users:** The `start.sh` script and `npm run dev` command are designed for Unix-like systems (Linux/macOS). Windows users should manually run the backend and frontend in separate terminals as described below.
+
 ### 1. Start the Backend API Server
 
 ```bash
