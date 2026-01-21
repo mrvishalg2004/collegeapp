@@ -9,12 +9,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-console.log('Serving static files from:', path.join(__dirname, 'public'));
-app.use('/public', express.static(path.join(__dirname, 'public'))); // Serve static files from api/public
+// Serve static files from api/public
+const publicPath = path.join(__dirname, 'public');
+console.log('Serving static files from:', publicPath);
+app.use('/public', express.static(publicPath));
 
 // Redirect singular /public/certificate to plural /public/certificates for backward compatibility
 app.use('/public/certificate', (req, res) => {
-    res.redirect(301, `/public/certificates${req.url}`);
+    const target = `/public/certificates${req.url}`;
+    console.log(`Redirecting from ${req.originalUrl} to ${target}`);
+    res.redirect(301, target);
 });
 
 // Middleware

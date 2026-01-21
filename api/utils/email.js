@@ -19,11 +19,12 @@ const sendEmail = async (to, subject, text, html, attachments = []) => {
             attachments
         };
 
+        console.log(`Sending email to: ${to} | Subject: ${subject}`);
         const info = await transporter.sendMail(mailOptions);
-        console.log('Email sent: ' + info.response);
+        console.log('✅ Email sent: ' + info.response);
         return info;
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('❌ Nodemailer Error:', error);
         throw error; // Rethrow to handle in the route
     }
 };

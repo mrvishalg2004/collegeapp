@@ -45,14 +45,22 @@ router.post('/generate', auth, async (req, res) => {
             return res.json(existingCert);
         }
 
-        const studentName = registration.studentId.name;
+        if (!registration.studentId) return res.status(400).json({ message: 'Student data not found in registration' });
+        if (!registration.eventId) return res.status(400).json({ message: 'Event data not found in registration' });
+        if (!registration.eventId.collegeId) return res.status(400).json({ message: 'College data not found for this event' });
+
+        const studentName = registration.studentId.name || 'Student';
         const studentEmail = registration.studentId.email;
-        const eventName = registration.eventId.name;
+        const eventName = registration.eventId.name || 'Event';
         const eventDate = registration.eventId.date;
-        const collegeName = registration.eventId.collegeId.name;
+        const collegeName = registration.eventId.collegeId.name || 'College';
+
+        console.log(`🚀 Starting certificate generation for: ${studentName} (${studentEmail})`);
 
         // Generate PDF
         const { filePath, relativePath, fileName } = await generateCertificate(studentName, eventName, eventDate, collegeName);
+
+        console.log(`✅ PDF file created at: ${filePath}`);
 
         // Construct URL (Replace localhost with actual IP in prod, or handle on client)
         // For development, we store the relative path or a constructed URL if we know the host
