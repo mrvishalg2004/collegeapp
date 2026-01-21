@@ -58,8 +58,11 @@ router.post('/generate', auth, async (req, res) => {
         // For development, we store the relative path or a constructed URL if we know the host
         // Best to store relative and prepend base URL on client, OR store full URL here if we know env.
         // Let's assume common IP for now or use relative.
-        // Store relative path, let client handle base URL OR use env variable
-        const baseUrl = process.env.BASE_URL || 'http://192.168.1.4:3000';
+        // Construct URL dynamically
+        const protocol = req.protocol;
+        const host = req.get('host');
+        // Prefer BASE_URL if set, otherwise use current request host
+        const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
         const pdfUrl = `${baseUrl}${relativePath}`;
 
         let certificate = new Certificate({
@@ -75,30 +78,37 @@ router.post('/generate', auth, async (req, res) => {
         registration.certificateGenerated = true;
         await registration.save();
 
-        // Send Email
-        const emailSubject = `Certificate of Participation - ${eventName}`;
-        const emailText = `Dear ${studentName},\n\nCongratulations! You have successfully completed the event "${eventName}" at ${collegeName}.\n\nPlease find your certificate attached.\n\nBest Regards,\nEvent Team`;
-        const emailHtml = `
-            <h3>Certificate of Participation</h3>
-            <p>Dear <strong>${studentName}</strong>,</p>
-            <p>Congratulations! You have successfully completed the event <strong>${eventName}</strong> at <strong>${collegeName}</strong>.</p>
-            <p>Please find your certificate attached.</p>
-            <br/>
-            <p>Best Regards,<br/>Event Team</p>
-        `;
+        // Send Email (Non-blocking)
+        setImmediate(async () => {
+            try {
+                const emailSubject = `Certificate of Participation - ${eventName}`;
+                const emailText = `Dear ${studentName},\n\nCongratulations! You have successfully completed the event "${eventName}" at ${collegeName}.\n\nPlease find your certificate attached.\n\nBest Regards,\nEvent Team`;
+                const emailHtml = `
+                    <h3>Certificate of Participation</h3>
+                    <p>Dear <strong>${studentName}</strong>,</p>
+                    <p>Congratulations! You have successfully completed the event <strong>${eventName}</strong> at <strong>${collegeName}</strong>.</p>
+                    <p>Please find your certificate attached.</p>
+                    <br/>
+                    <p>Best Regards,<br/>Event Team</p>
+                `;
 
-        await sendEmail(studentEmail, emailSubject, emailText, emailHtml, [
-            {
-                filename: fileName,
-                path: filePath
+                await sendEmail(studentEmail, emailSubject, emailText, emailHtml, [
+                    {
+                        filename: fileName,
+                        path: filePath
+                    }
+                ]);
+                console.log(`Certificate email sent to ${studentEmail}`);
+            } catch (emailErr) {
+                console.error("Certificate Email Error:", emailErr);
             }
-        ]);
+        });
 
         res.json(certificate);
 
     } catch (err) {
-        console.error(err); // Log full error
-        res.status(500).send('Server Error: ' + err.message);
+        console.error("Certificate Generation Error:", err);
+        res.status(500).json({ message: 'Server Error', error: err.message });
     }
 });
 
