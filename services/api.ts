@@ -6,6 +6,7 @@ const API_URL = 'https://collegeapp-1-8zi4.onrender.com/api';
 
 const api = axios.create({
     baseURL: API_URL,
+    timeout: 15000,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -13,7 +14,7 @@ const api = axios.create({
 
 // Add a request interceptor to attach the token
 api.interceptors.request.use(
-    async (config) => {
+    (async (config: any) => {
         let token;
         if (Platform.OS === 'web') {
             token = localStorage.getItem('token');
@@ -25,7 +26,7 @@ api.interceptors.request.use(
             config.headers['x-auth-token'] = token;
         }
         return config;
-    },
+    }) as any,
     (error) => {
         console.error('API Error:', {
             message: error.message,

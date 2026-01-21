@@ -2,13 +2,15 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Registration = require('../models/Registration');
-const Event = require('../models/Event'); // To check fee
+const Event = require('../models/Event');
+const User = require('../models/User');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const sendEmail = require('../utils/email');
 
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
+    key_id: process.env.RAZORPAY_KEY_ID || 'dummy',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy'
 });
 
 // @route   POST api/payments/create-order
@@ -66,20 +68,23 @@ router.post('/verify', auth, async (req, res) => {
 
             await registration.save();
 
-            // Send Email Confirmation
-            const sendEmail = require('../utils/email');
-            const User = require('../models/User');
-            const Event = require('../models/Event');
-            // Fetch names for email
-            const student = await User.findById(req.user.id);
-            const event = await Event.findById(eventId);
-
-            await sendEmail(
-                student.email,
-                `Registration Confirmed: ${event.name}`,
-                `Hello ${student.name},\n\nYou have successfully registered for ${event.name}.\n\nOrder ID: ${razorpayOrderId}`,
-                `<h3>Registration Confirmed!</h3><p>Hello <b>${student.name}</b>,</p><p>You have successfully registered for <b>${event.name}</b>.</p><p>Order ID: <b>${razorpayOrderId}</b></p>`
-            );
+            // Send Email Confirmation (Non-blocking to avoid frontend timeout)
+            setImmediate(async () => {
+                try {
+                    const student = await User.findById(req.user.id);
+                    const event = await Event.findById(eventId);
+                    if (student && event) {
+                        await sendEmail(
+                            student.email,
+                            `Registration Confirmed: ${event.name}`,
+                            `Hello ${student.name},\n\nYou have successfully registered for ${event.name}.\n\nOrder ID: ${razorpayOrderId}`,
+                            `<h3>Registration Confirmed!</h3><p>Hello <b>${student.name}</b>,</p><p>You have successfully registered for <b>${event.name}</b>.</p><p>Order ID: <b>${razorpayOrderId}</b></p>`
+                        );
+                    }
+                } catch (emailErr) {
+                    console.error('Non-blocking Email Error:', emailErr);
+                }
+            });
 
             res.json({ message: 'Payment verified and registered', registration });
         } else {

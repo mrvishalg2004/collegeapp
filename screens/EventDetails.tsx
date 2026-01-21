@@ -69,30 +69,38 @@ export default function EventDetails() {
     const imageSource = getEventImage(deptName);
 
     const handleRegisterOffline = async () => {
+        console.log("Initiating Offline Registration for event:", event._id);
         setLoading(true);
         try {
             await PaymentService.registerOffline(event._id);
+            console.log("Offline Registration Successful");
             Alert.alert(
                 "Registration Successful",
                 "You have been registered. Please complete the payment offline at the college counter.",
                 [{ text: "OK", onPress: () => navigation.goBack() }]
             );
         } catch (e: any) {
-            Alert.alert("Error", e.response?.data?.message || "Failed");
+            console.error("Offline Registration Error:", e);
+            const msg = e.response?.data?.message || e.message || "Failed";
+            Alert.alert("Error", msg);
         } finally {
             setLoading(false);
         }
     };
 
     const handlePayOnline = async () => {
+        console.log("Initiating Online Payment for event:", event._id);
         setLoading(true);
         try {
             const order = await PaymentService.createOrder(event._id);
+            console.log("Order created successfully:", (order as any).id);
             setCurrentOrder(order);
             setPaymentSuccess(false); // Reset
             setPaymentModalVisible(true);
         } catch (e: any) {
-            Alert.alert("Error", e.response?.data?.message || "Failed to initiate payment");
+            console.error("Create Order Error:", e);
+            const msg = e.response?.data?.message || e.message || "Failed to initiate payment";
+            Alert.alert("Payment Error", msg);
         } finally {
             setLoading(false);
         }
