@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const API_URL = 'http://192.168.1.4:3000/api';
+const API_URL = 'https://collegeapp-1-8zi4.onrender.com/api';
 
 const api = axios.create({
     baseURL: API_URL,
