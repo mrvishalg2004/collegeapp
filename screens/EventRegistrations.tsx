@@ -48,6 +48,9 @@ export default function EventRegistrations() {
                 <Text style={[styles.status, { color: item.paymentStatus === 'paid' ? 'green' : 'orange' }]}>
                     Payment: {item.paymentStatus.toUpperCase()}
                 </Text>
+                <Text style={[styles.status, { color: item.attendance ? '#1A237E' : '#999' }]}>
+                    Attendance: {item.attendance ? "MARKED" : "NOT MARKED"}
+                </Text>
             </View>
 
             {item.paymentStatus === 'paid' && (

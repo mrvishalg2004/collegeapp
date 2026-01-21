@@ -36,7 +36,8 @@ router.post('/generate', auth, async (req, res) => {
 
         // Check attendance
         if (!registration.attendance) {
-            return res.status(400).json({ message: 'Attendance not marked' });
+            console.log(`⚠️ Attendance not marked for registration: ${registrationId}`);
+            return res.status(400).json({ message: 'Student attendance must be marked before generating certificate.' });
         }
 
         // Check if certificate already exists
@@ -67,11 +68,9 @@ router.post('/generate', auth, async (req, res) => {
         // Best to store relative and prepend base URL on client, OR store full URL here if we know env.
         // Let's assume common IP for now or use relative.
         // Construct URL dynamically
-        const protocol = req.protocol;
-        const host = req.get('host');
-        // Prefer BASE_URL if set, otherwise use current request host
-        const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
-        const pdfUrl = `${baseUrl}${relativePath}`;
+        // Prefer current request host for the live link
+        const currentBaseUrl = `${req.protocol}://${req.get('host')}`;
+        const pdfUrl = `${currentBaseUrl}${relativePath}`;
 
         let certificate = new Certificate({
             registrationId: registration._id,
