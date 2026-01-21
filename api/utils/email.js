@@ -3,9 +3,7 @@ const nodemailer = require('nodemailer');
 const sendEmail = async (to, subject, text, html, attachments = []) => {
     try {
         const transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 465,
-            secure: true, // use SSL
+            service: 'gmail',
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS?.replace(/\s/g, '') // Remove any spaces

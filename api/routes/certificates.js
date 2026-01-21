@@ -85,31 +85,28 @@ router.post('/generate', auth, async (req, res) => {
         registration.certificateGenerated = true;
         await registration.save();
 
-        // Send Email (Now Awaiting to ensure it works, but handled with try-catch)
-        try {
-            console.log(`Attempting to send certificate email to ${studentEmail}...`);
-            const emailSubject = `Certificate of Participation - ${eventName}`;
-            const emailText = `Dear ${studentName},\n\nCongratulations! You have successfully completed the event "${eventName}" at ${collegeName}.\n\nPlease find your certificate attached.\n\nBest Regards,\nEvent Team`;
-            const emailHtml = `
-                <h3>Certificate of Participation</h3>
-                <p>Dear <strong>${studentName}</strong>,</p>
-                <p>Congratulations! You have successfully completed the event <strong>${eventName}</strong> at <strong>${collegeName}</strong>.</p>
-                <p>Please find your certificate attached.</p>
-                <br/>
-                <p>Best Regards,<br/>Event Team</p>
-            `;
+        // Send Email (Non-blocking)
+        const emailSubject = `Certificate of Participation - ${eventName}`;
+        const emailText = `Dear ${studentName},\n\nCongratulations! You have successfully completed the event "${eventName}" at ${collegeName}.\n\nPlease find your certificate attached.\n\nBest Regards,\nEvent Team`;
+        const emailHtml = `
+            <h3>Certificate of Participation</h3>
+            <p>Dear <strong>${studentName}</strong>,</p>
+            <p>Congratulations! You have successfully completed the event <strong>${eventName}</strong> at <strong>${collegeName}</strong>.</p>
+            <p>Please find your certificate attached.</p>
+            <br/>
+            <p>Best Regards,<br/>Event Team</p>
+        `;
 
-            await sendEmail(studentEmail, emailSubject, emailText, emailHtml, [
-                {
-                    filename: fileName,
-                    path: filePath
-                }
-            ]);
+        sendEmail(studentEmail, emailSubject, emailText, emailHtml, [
+            {
+                filename: fileName,
+                path: filePath
+            }
+        ]).then(() => {
             console.log(`✅ Certificate email sent successfully to ${studentEmail}`);
-        } catch (emailErr) {
+        }).catch((emailErr) => {
             console.error("❌ Certificate Email Error:", emailErr.message);
-            // We don't fail the whole request because certificate is already saved
-        }
+        });
 
         res.json(certificate);
 
