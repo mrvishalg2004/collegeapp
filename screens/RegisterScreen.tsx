@@ -27,8 +27,11 @@ export default function RegisterScreen() {
             await AuthService.register({ name, email, password, role: 'student' });
             Alert.alert('Success', 'Account created!');
             // Again, needs context update to auto-login or redirect
-        } catch (error) {
-            Alert.alert('Registration Failed', error.response?.data?.message || 'Something went wrong');
+        } catch (error: any) {
+            console.error('Registration Error:', error.response?.data || error.message);
+            const errorMessage = error.response?.data?.message ||
+                (typeof error.response?.data === 'string' ? error.response.data : 'Something went wrong');
+            Alert.alert('Registration Failed', errorMessage);
         } finally {
             setLoading(false);
         }

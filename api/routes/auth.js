@@ -44,8 +44,8 @@ router.post('/register', async (req, res) => {
         res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, collegeId: user.collegeId } });
 
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('❌ Register Error:', err.message);
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
 });
 
@@ -79,8 +79,8 @@ router.post('/login', async (req, res) => {
         res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, collegeId: user.collegeId, departmentId: user.departmentId } });
 
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
+        console.error('❌ Login Error:', err.message);
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
 });
 
