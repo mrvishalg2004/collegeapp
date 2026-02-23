@@ -44,7 +44,7 @@ export default function AdminDashboard() {
                     <View style={styles.logoIcon}>
                         <Ionicons name="grid" size={20} color="#00E5FF" />
                     </View>
-                    <Text style={styles.headerTitle}>AdminDashboard</Text>
+                    <Text style={styles.headerTitle}>EventCraft</Text>
                 </View>
                 <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
                     <Ionicons name="log-out-outline" size={20} color="#F44336" />

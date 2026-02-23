@@ -32,7 +32,7 @@ export default function SystemReports() {
 
                 {/* Revenue Card */}
                 <LinearGradient colors={['#43A047', '#2E7D32']} style={styles.revenueCard}>
-                    <Text style={styles.cardLabel}>Total Revenue</Text>
+                    <Text style={styles.cardLabel}>Total Subscription Revenue</Text>
                     <Text style={styles.revenueText}>₹{data?.totalRevenue?.toLocaleString()}</Text>
                 </LinearGradient>
 
@@ -45,15 +45,15 @@ export default function SystemReports() {
                     </View>
                 ))}
 
-                {/* Recent Registrations */}
-                <Text style={styles.sectionTitle}>Recent Registrations</Text>
-                {data?.recentRegistrations?.map((reg: any, index: number) => (
+                {/* Recent Subscriptions */}
+                <Text style={styles.sectionTitle}>Recent College Subscriptions</Text>
+                {data?.recentSubscriptions?.map((sub: any, index: number) => (
                     <View key={index} style={styles.listItem}>
                         <View>
-                            <Text style={styles.listText}>{reg.studentId?.name || 'Unknown'}</Text>
-                            <Text style={styles.subText}>{reg.eventId?.name}</Text>
+                            <Text style={styles.listText}>{sub.name}</Text>
+                            <Text style={styles.subText}>Price: ₹{sub.subscriptionPrice}</Text>
                         </View>
-                        <Text style={styles.date}>{new Date(reg.createdAt).toLocaleDateString()}</Text>
+                        <Text style={styles.date}>{sub.paidAt ? new Date(sub.paidAt).toLocaleDateString() : 'N/A'}</Text>
                     </View>
                 ))}
 

@@ -71,7 +71,7 @@ app.use('/api/certificates', require('./routes/certificates'));
 app.use('/api/registrations', require('./routes/registrations'));
 
 app.get('/', (req, res) => {
-    res.send('College Event Management API is Running');
+    res.send('EventCraft API is Running');
 });
 
 // Start Server

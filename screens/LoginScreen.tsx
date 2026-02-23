@@ -6,14 +6,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import { AuthService } from '../services/auth.service';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [selectedRole, setSelectedRole] = useState('student');
     const { login } = useAuth();
     const [loading, setLoading] = useState(false);
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const navigation = useNavigation<any>();
+
+    const roles = [
+        { id: 'student', title: 'Student', icon: 'school', color: '#4CAF50' },
+        { id: 'college', title: 'College', icon: 'business', color: '#2196F3' },
+        { id: 'coordinator', title: 'Coord', icon: 'people', color: '#FF9800' },
+        { id: 'admin', title: 'Super', icon: 'shield-checkmark', color: '#E91E63' }
+    ];
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -24,8 +33,10 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             await login(email, password);
-            // Alert.alert('Success', 'Logged in!');
-            // Navigation handled by AppNavigator observing user state
+            const user = await AuthService.getCurrentUser();
+            if (user && user.role !== selectedRole) {
+                Alert.alert('Role Mismatch', `You are logged in as ${user.role}, which is different from your selection (${selectedRole}).`);
+            }
         } catch (error) {
             Alert.alert('Login Failed', (error as any).response?.data?.message || 'Something went wrong');
         } finally {
@@ -44,8 +55,34 @@ export default function LoginScreen() {
                         <Ionicons name="school" size={40} color="#1E88E5" />
                     </View>
 
-                    <Text style={styles.title}>Welcome Back</Text>
-                    <Text style={styles.subtitle}>Sign in to manage your events</Text>
+                    <Text style={styles.title}>EventCraft</Text>
+                    <Text style={styles.subtitle}>Choose your role and sign in</Text>
+
+                    {/* Role Selection */}
+                    <View style={styles.roleContainer}>
+                        {roles.map((role) => (
+                            <TouchableOpacity
+                                key={role.id}
+                                style={[
+                                    styles.roleCard,
+                                    selectedRole === role.id && { borderColor: role.color, backgroundColor: role.color + '10' }
+                                ]}
+                                onPress={() => setSelectedRole(role.id)}
+                            >
+                                <Ionicons
+                                    name={role.icon as any}
+                                    size={24}
+                                    color={selectedRole === role.id ? role.color : '#999'}
+                                />
+                                <Text style={[
+                                    styles.roleText,
+                                    selectedRole === role.id && { color: role.color, fontWeight: 'bold' }
+                                ]}>
+                                    {role.title}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
 
                     <View style={styles.form}>
                         {/* Email Input */}
@@ -89,7 +126,7 @@ export default function LoginScreen() {
                                 <ActivityIndicator color="#fff" />
                             ) : (
                                 <View style={styles.btnContent}>
-                                    <Text style={styles.loginButtonText}>Login to Dashboard</Text>
+                                    <Text style={styles.loginButtonText}>Login as {roles.find(r => r.id === selectedRole)?.title}</Text>
                                     <Ionicons name="arrow-forward-circle-outline" size={20} color="#fff" style={{ marginLeft: 8 }} />
                                 </View>
                             )}
@@ -260,5 +297,26 @@ const styles = StyleSheet.create({
         color: '#999',
         fontSize: 12,
         fontWeight: '500'
+    },
+    roleContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginBottom: 30,
+        gap: 8
+    },
+    roleCard: {
+        flex: 1,
+        backgroundColor: '#F8F9FB',
+        borderRadius: 15,
+        paddingVertical: 12,
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    roleText: {
+        fontSize: 10,
+        color: '#999',
+        marginTop: 5,
     }
 });

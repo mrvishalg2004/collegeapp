@@ -12,6 +12,11 @@ export interface ICollege {
     name: string;
     email: string;
     status: string;
+    subscriptionPrice: number;
+    subscriptionDuration: number;
+    subscriptionStatus: 'pending' | 'paid';
+    subscriptionExpiry?: string;
+    paidAt?: string;
 }
 
 export interface IDepartment {

@@ -6,8 +6,18 @@ export const CollegeService = {
         return response.data;
     },
 
-    createCollege: async (data: { name: string; email: string; password?: string }) => {
+    createCollege: async (data: { name: string; email: string; password?: string; subscriptionPrice: number; subscriptionDuration: number }) => {
         const response = await api.post('/colleges', data);
+        return response.data;
+    },
+
+    getCollegeById: async (id: string) => {
+        const response = await api.get(`/colleges/${id}`);
+        return response.data;
+    },
+
+    paySubscription: async (id: string) => {
+        const response = await api.post(`/colleges/${id}/pay`);
         return response.data;
     },
 

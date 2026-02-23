@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, ImageBackground, StatusBar, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, ImageBackground, StatusBar, RefreshControl, Modal, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { EventService } from '../services/event.service';
 import { PaymentService } from '../services/payment.service';
+import { CollegeService } from '../services/college.service';
+import { ICollege } from '../types';
 
 const { width } = Dimensions.get('window');
 
@@ -22,11 +24,46 @@ export default function CollegeDashboard() {
     const [recentActivity, setRecentActivity] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [college, setCollege] = useState<ICollege | null>(null);
+    const [showSubModal, setShowSubModal] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
+        checkSubscription();
         loadStats();
     }, []);
+
+    const checkSubscription = async () => {
+        if (user?.collegeId) {
+            try {
+                const data = await CollegeService.getCollegeById(user.collegeId) as ICollege;
+                setCollege(data);
+                if (data.subscriptionStatus === 'pending') {
+                    setShowSubModal(true);
+                } else {
+                    setShowSubModal(false);
+                }
+            } catch (error) {
+                console.error("Failed to check subscription", error);
+            }
+        }
+    };
+
+    const handlePaySubscription = async () => {
+        if (!user?.collegeId) return;
+        try {
+            setSubmitting(true);
+            await CollegeService.paySubscription(user.collegeId);
+            Alert.alert("Success", "Subscription activated successfully!");
+            setShowSubModal(false);
+            loadStats();
+        } catch (error: any) {
+            Alert.alert("Payment Failed", error.response?.data?.message || "Failed to process payment");
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const loadStats = async () => {
         try {
@@ -110,6 +147,7 @@ export default function CollegeDashboard() {
 
     useFocusEffect(
         useCallback(() => {
+            checkSubscription();
             loadStats();
         }, [])
     );
@@ -272,6 +310,61 @@ export default function CollegeDashboard() {
                     <View style={{ height: 100 }} />
                 </ScrollView>
             </View>
+
+            {/* Subscription Payment Modal */}
+            <Modal
+                visible={showSubModal}
+                transparent={true}
+                animationType="fade"
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.subModalContent}>
+                        <LinearGradient
+                            colors={['#1A237E', '#283593']}
+                            style={styles.subModalHeader}
+                        >
+                            <Ionicons name="card-outline" size={48} color="#FFF" />
+                            <Text style={styles.subModalTitle}>Subscription Required</Text>
+                        </LinearGradient>
+
+                        <View style={styles.subModalBody}>
+                            <Text style={styles.subModalText}>
+                                Your subscription for <Text style={{ fontWeight: 'bold', color: '#1A237E' }}>{college?.name}</Text> is currently pending.
+                            </Text>
+
+                            <View style={styles.priceCard}>
+                                <Text style={styles.priceLabel}>Activation Fee</Text>
+                                <Text style={styles.priceValue}>₹{college?.subscriptionPrice || 0}</Text>
+                                <View style={styles.divider} />
+                                <Text style={styles.durationText}>Validity: {college?.subscriptionDuration || 12} Months</Text>
+                            </View>
+
+                            <Text style={styles.subFooterText}>
+                                Please activate your subscription to access the dashboard features and manage your college events.
+                            </Text>
+
+                            <TouchableOpacity
+                                style={[styles.payBtn, submitting && { opacity: 0.7 }]}
+                                onPress={handlePaySubscription}
+                                disabled={submitting}
+                            >
+                                {submitting ? (
+                                    <ActivityIndicator color="#FFF" />
+                                ) : (
+                                    <>
+                                        <Ionicons name="checkmark-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                                        <Text style={styles.payBtnText}>Pay & Activate Now</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity style={styles.subLogoutBtn} onPress={logout}>
+                                <Text style={styles.subLogoutText}>Logout and try later</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -398,5 +491,107 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         marginLeft: 10
+    },
+
+    // Subscription Modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+    },
+    subModalContent: {
+        width: '100%',
+        backgroundColor: '#FFF',
+        borderRadius: 25,
+        overflow: 'hidden',
+        elevation: 10
+    },
+    subModalHeader: {
+        padding: 30,
+        alignItems: 'center'
+    },
+    subModalTitle: {
+        color: '#FFF',
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginTop: 15
+    },
+    subModalBody: {
+        padding: 25,
+        alignItems: 'center'
+    },
+    subModalText: {
+        fontSize: 16,
+        color: '#444',
+        textAlign: 'center',
+        lineHeight: 24,
+        marginBottom: 20
+    },
+    priceCard: {
+        width: '100%',
+        backgroundColor: '#F5F7FA',
+        borderRadius: 15,
+        padding: 20,
+        alignItems: 'center',
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#E3F2FD'
+    },
+    priceLabel: {
+        fontSize: 14,
+        color: '#78909C',
+        marginBottom: 5
+    },
+    priceValue: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#1A237E'
+    },
+    divider: {
+        width: '50%',
+        height: 1,
+        backgroundColor: '#CFD8DC',
+        marginVertical: 12
+    },
+    durationText: {
+        fontSize: 14,
+        color: '#546E7A',
+        fontWeight: '500'
+    },
+    subFooterText: {
+        fontSize: 13,
+        color: '#90A4AE',
+        textAlign: 'center',
+        marginBottom: 25
+    },
+    payBtn: {
+        width: '100%',
+        backgroundColor: '#43A047',
+        height: 55,
+        borderRadius: 15,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#43A047',
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 }
+    },
+    payBtnText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: 'bold'
+    },
+    subLogoutBtn: {
+        marginTop: 20,
+        padding: 10
+    },
+    subLogoutText: {
+        color: '#90A4AE',
+        fontSize: 14,
+        textDecorationLine: 'underline'
     }
 });

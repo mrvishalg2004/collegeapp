@@ -49,7 +49,7 @@ export default function RegisterScreen() {
 
                 <View style={styles.header}>
                     <Text style={styles.title}>Create Account</Text>
-                    <Text style={styles.subtitle}>Join Campus Connect</Text>
+                    <Text style={styles.subtitle}>Join EventCraft</Text>
                 </View>
 
                 <View style={styles.card}>

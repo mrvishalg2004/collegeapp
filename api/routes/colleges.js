@@ -14,14 +14,19 @@ router.post('/', auth, async (req, res) => {
     }
 
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, subscriptionPrice, subscriptionDuration } = req.body;
 
         let college = await College.findOne({ email });
         if (college) {
             return res.status(400).json({ message: 'College already exists with this email' });
         }
 
-        college = new College({ name, email });
+        college = new College({
+            name,
+            email,
+            subscriptionPrice: subscriptionPrice || 0,
+            subscriptionDuration: subscriptionDuration || 12
+        });
         await college.save();
 
         // Create College Admin User
@@ -153,6 +158,44 @@ router.put('/:id', auth, async (req, res) => {
         await college.save();
         res.json(college);
 
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   GET api/colleges/:id
+// @desc    Get college by ID
+// @access  Private
+router.get('/:id', auth, async (req, res) => {
+    try {
+        const college = await College.findById(req.params.id);
+        if (!college) return res.status(404).json({ message: 'College not found' });
+        res.json(college);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   POST api/colleges/:id/pay
+// @desc    Pay subscription and activate
+// @access  Private (College)
+router.post('/:id/pay', auth, async (req, res) => {
+    try {
+        const college = await College.findById(req.params.id);
+        if (!college) return res.status(404).json({ message: 'College not found' });
+
+        // Update subscription
+        college.subscriptionStatus = 'paid';
+        college.paidAt = Date.now();
+
+        const expiryDate = new Date();
+        expiryDate.setMonth(expiryDate.getMonth() + (college.subscriptionDuration || 12));
+        college.subscriptionExpiry = expiryDate;
+
+        await college.save();
+        res.json({ message: 'Subscription activated', college });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

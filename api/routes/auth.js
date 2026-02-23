@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const College = require('../models/College');
 
 // Register User
 router.post('/register', async (req, res) => {
@@ -64,6 +65,14 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid Credentials' });
+        }
+
+        // Check College Status if applicable
+        if (user.collegeId) {
+            const college = await College.findById(user.collegeId);
+            if (college && college.status === 'inactive') {
+                return res.status(403).json({ message: 'This college is currently blocked by administration. Please contact your administrator.' });
+            }
         }
 
         // Return Token

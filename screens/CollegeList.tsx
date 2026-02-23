@@ -15,6 +15,8 @@ export default function CollegeList() {
     const [newCollegePassword, setNewCollegePassword] = useState('');
 
     const [editingCollege, setEditingCollege] = useState<ICollege | null>(null);
+    const [subPrice, setSubPrice] = useState('0');
+    const [subDuration, setSubDuration] = useState('12');
 
     useEffect(() => {
         fetchColleges();
@@ -49,8 +51,14 @@ export default function CollegeList() {
                 Alert.alert("Success", "College Updated");
             } else {
                 // Create
-                await CollegeService.createCollege({ name: newCollegeName, email: newCollegeEmail, password: newCollegePassword });
-                Alert.alert("Success", "College Created");
+                await CollegeService.createCollege({
+                    name: newCollegeName,
+                    email: newCollegeEmail,
+                    password: newCollegePassword,
+                    subscriptionPrice: parseFloat(subPrice) || 0,
+                    subscriptionDuration: parseInt(subDuration) || 12
+                });
+                Alert.alert("Success", "College Created with Subscription");
             }
             closeModal();
             fetchColleges();
@@ -64,6 +72,8 @@ export default function CollegeList() {
         setNewCollegeName('');
         setNewCollegeEmail('');
         setNewCollegePassword('');
+        setSubPrice('0');
+        setSubDuration('12');
         setModalVisible(true);
     };
 
@@ -81,17 +91,20 @@ export default function CollegeList() {
     };
 
     const handleToggleStatus = (college: ICollege) => {
-        const newStatus = college.status === 'active' ? 'inactive' : 'active';
+        const isBlocking = college.status === 'active';
         Alert.alert(
-            "Confirm Status Change",
-            `Change status to ${newStatus}?`,
+            isBlocking ? "Block College" : "Unblock College",
+            isBlocking
+                ? "Blocking this college will immediately prevent all associated admins, coordinators, and students from logging into the system."
+                : "Unblock this college to restore access for all its users.",
             [
                 { text: "Cancel", style: "cancel" },
                 {
-                    text: "Confirm",
+                    text: isBlocking ? "Block" : "Unblock",
+                    style: isBlocking ? "destructive" : "default",
                     onPress: async () => {
                         try {
-                            await CollegeService.updateCollege(college._id, { status: newStatus });
+                            await CollegeService.updateCollege(college._id, { status: isBlocking ? 'inactive' : 'active' });
                             fetchColleges();
                         } catch (e) {
                             console.error(e);
@@ -105,18 +118,18 @@ export default function CollegeList() {
     const handleDeleteCollege = (id: string) => {
         Alert.alert(
             "Delete College",
-            "Are you sure? This action cannot be undone.",
+            "Are you sure you want to PERMANENTLY remove this college? This will delete the institution record, but associated data may persist in reports. This action cannot be undone.",
             [
                 { text: "Cancel", style: "cancel" },
                 {
-                    text: "Delete", style: 'destructive', onPress: async () => {
+                    text: "Remove Permanently", style: 'destructive', onPress: async () => {
                         try {
                             await CollegeService.deleteCollege(id);
                             fetchColleges(); // Refresh list
-                            Alert.alert("Success", "College deleted");
+                            Alert.alert("Success", "College removed from system.");
                         } catch (error: any) {
                             console.error("Delete failed:", error);
-                            Alert.alert("Error", error.response?.data?.message || error.message || "Failed to delete college");
+                            Alert.alert("Error", error.response?.data?.message || error.message || "Failed to remove college");
                         }
                     }
                 }
@@ -136,10 +149,23 @@ export default function CollegeList() {
                     <Text style={styles.collegeName}>{item.name}</Text>
                     <TouchableOpacity onPress={() => handleToggleStatus(item)} style={[styles.statusBadge, { backgroundColor: item.status === 'active' ? '#E8F5E9' : '#FFEBEE' }]}>
                         <View style={[styles.statusDot, { backgroundColor: item.status === 'active' ? '#4CAF50' : '#F44336' }]} />
-                        <Text style={[styles.statusText, { color: item.status === 'active' ? '#4CAF50' : '#F44336' }]}>{item.status.toUpperCase()}</Text>
+                        <Text style={[styles.statusText, { color: item.status === 'active' ? '#4CAF50' : '#F44336' }]}>
+                            {item.status === 'active' ? 'ACTIVE' : 'BLOCKED'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
                 <Text style={styles.collegeEmail}>{item.email}</Text>
+
+                <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
+                    <View style={styles.infoBadge}>
+                        <Text style={styles.infoText}>₹{item.subscriptionPrice}</Text>
+                    </View>
+                    <View style={[styles.infoBadge, { backgroundColor: item.subscriptionStatus === 'paid' ? '#E8F5E9' : '#FFF3E0' }]}>
+                        <Text style={[styles.infoText, { color: item.subscriptionStatus === 'paid' ? '#2E7D32' : '#EF6C00' }]}>
+                            {item.subscriptionStatus?.toUpperCase() || 'PENDING'}
+                        </Text>
+                    </View>
+                </View>
 
                 <View style={styles.actionRow}>
                     <TouchableOpacity onPress={() => openEditModal(item)} style={styles.iconBtn}>
@@ -241,6 +267,29 @@ export default function CollegeList() {
                                 </View>
                             </>
                         )}
+
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.label}>Sub. Price (₹)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="5000"
+                                    keyboardType="numeric"
+                                    value={subPrice}
+                                    onChangeText={setSubPrice}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.label}>Duration (Mon)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="12"
+                                    keyboardType="numeric"
+                                    value={subDuration}
+                                    onChangeText={setSubDuration}
+                                />
+                            </View>
+                        </View>
 
                         <View style={styles.modalActions}>
                             <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
@@ -471,4 +520,15 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
     },
+    infoBadge: {
+        backgroundColor: '#F0F2F5',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    infoText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: '#546E7A',
+    }
 });

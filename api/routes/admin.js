@@ -38,28 +38,17 @@ router.get('/reports', auth, async (req, res) => {
     }
 
     try {
-        const Registration = require('../models/Registration');
-
-        // 1. Total Revenue (Sum of fees from paid registrations)
-        const revenueAggregation = await Registration.aggregate([
-            { $match: { paymentStatus: 'paid' } },
-            {
-                $lookup: {
-                    from: 'events',
-                    localField: 'eventId',
-                    foreignField: '_id',
-                    as: 'event'
-                }
-            },
-            { $unwind: '$event' },
+        // 1. Total Subscription Revenue (Sum of college activation fees)
+        const subscriptionAggregation = await College.aggregate([
+            { $match: { subscriptionStatus: 'paid' } },
             {
                 $group: {
                     _id: null,
-                    totalRevenue: { $sum: '$event.fee' }
+                    totalRevenue: { $sum: '$subscriptionPrice' }
                 }
             }
         ]);
-        const totalRevenue = revenueAggregation.length > 0 ? revenueAggregation[0].totalRevenue : 0;
+        const totalRevenue = subscriptionAggregation.length > 0 ? subscriptionAggregation[0].totalRevenue : 0;
 
         // 2. Top Performing Colleges (Most events created)
         const topColleges = await Event.aggregate([
@@ -88,17 +77,16 @@ router.get('/reports', auth, async (req, res) => {
             }
         ]);
 
-        // 3. Recent Registrations (Last 5)
-        const recentRegistrations = await Registration.find()
-            .sort({ createdAt: -1 })
+        // 3. Recent Subscriptions (Last 5 colleges that paid)
+        const recentSubscriptions = await College.find({ subscriptionStatus: 'paid' })
+            .sort({ paidAt: -1 })
             .limit(5)
-            .populate('studentId', 'name email')
-            .populate('eventId', 'name');
+            .select('name subscriptionPrice paidAt');
 
         res.json({
             totalRevenue,
             topColleges,
-            recentRegistrations
+            recentSubscriptions
         });
 
     } catch (err) {
