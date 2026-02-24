@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
 import api from '../services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,10 +8,13 @@ import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 
+const { width } = Dimensions.get('window');
+
 export default function AdminDashboard() {
     const navigation = useNavigation<any>();
     const [stats, setStats] = useState<{ colleges: number; events: number; students: number }>({ colleges: 0, events: 0, students: 0 });
     const [loading, setLoading] = useState(true);
+    const { logout } = useAuth();
 
     useEffect(() => {
         fetchStats();
@@ -28,342 +31,334 @@ export default function AdminDashboard() {
         }
     };
 
-    const { logout } = useAuth();
-
     const handleLogout = async () => {
         await logout();
     };
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar style="dark" />
-
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <View style={styles.logoIcon}>
-                        <Ionicons name="grid" size={20} color="#00E5FF" />
-                    </View>
-                    <Text style={styles.headerTitle}>EventCraft</Text>
+    const StatCard = ({ title, value, icon, colors, glowColor }: any) => (
+        <TouchableOpacity style={styles.neoStatCard} activeOpacity={0.9}>
+            <View style={[styles.glowContainer, { shadowColor: glowColor }]} />
+            <LinearGradient
+                colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
+                style={styles.neoStatInner}
+            >
+                <LinearGradient colors={colors} style={styles.statIconBox}>
+                    <Ionicons name={icon} size={24} color="#fff" />
+                </LinearGradient>
+                <View style={styles.statContent}>
+                    <Text style={styles.neoStatValue}>{value}</Text>
+                    <Text style={styles.neoStatTitle}>{title.toUpperCase()}</Text>
                 </View>
-                <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-                    <Ionicons name="log-out-outline" size={20} color="#F44336" />
-                </TouchableOpacity>
+            </LinearGradient>
+        </TouchableOpacity>
+    );
+
+    const MenuButton = ({ title, subtitle, icon, color, onPress }: any) => (
+        <TouchableOpacity style={styles.neoMenuBtn} onPress={onPress} activeOpacity={0.8}>
+            <LinearGradient
+                colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.02)']}
+                style={styles.neoMenuInner}
+            >
+                <View style={[styles.menuIconBox, { backgroundColor: color + '20' }]}>
+                    <Ionicons name={icon} size={28} color={color} />
+                </View>
+                <View style={styles.menuText}>
+                    <Text style={styles.neoMenuTitle}>{title}</Text>
+                    <Text style={styles.neoMenuSub}>{subtitle}</Text>
+                </View>
+                <View style={styles.menuArrow}>
+                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+                </View>
+            </LinearGradient>
+        </TouchableOpacity>
+    );
+
+    return (
+        <View style={styles.mainContainer}>
+            <StatusBar style="light" />
+
+            {/* Background Mesh Elements */}
+            <View style={styles.meshContainer}>
+                <LinearGradient colors={['#A855F7', 'transparent']} style={[styles.orb, styles.orb1]} />
+                <LinearGradient colors={['#06B6D4', 'transparent']} style={[styles.orb, styles.orb2]} />
+                <LinearGradient colors={['#F59E0B', 'transparent']} style={[styles.orb, styles.orb3]} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-                {/* System Status Card */}
-                <View style={styles.statusCard}>
-                    <View style={styles.statusContent}>
-                        <Text style={styles.statusLabel}>SYSTEM STATUS: ACTIVE</Text>
-                        <Text style={styles.welcomeTitle}>Welcome back, Super Admin</Text>
-                        <Text style={styles.statusDesc}>The college network is performing at peak efficiency today.</Text>
+            <SafeAreaView style={styles.safeArea}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.welcomeText}>System Command</Text>
+                        <Text style={styles.brandText}>EVENTCRAFT<Text style={{ color: '#A855F7' }}>.OS</Text></Text>
                     </View>
-                    {/* Decorative Circle */}
-                    <View style={styles.decorativeCircle}>
-                        <Ionicons name="person" size={80} color="rgba(255,255,255,0.2)" />
-                    </View>
+                    <TouchableOpacity onPress={handleLogout} style={styles.logoutCircle}>
+                        <Ionicons name="power" size={24} color="#EF4444" />
+                    </TouchableOpacity>
                 </View>
 
-                {/* System Overview */}
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>System Overview</Text>
-                    <View style={styles.liveBadge}>
-                        <Text style={styles.liveText}>Live</Text>
-                        <View style={styles.liveDot} />
-                    </View>
-                </View>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
-                <View style={styles.overviewGrid}>
-                    {/* Colleges Card */}
-                    <View style={styles.overviewCard}>
-                        <View style={[styles.iconBox, { backgroundColor: '#FFF3E0' }]}>
-                            <Ionicons name="school" size={24} color="#FF9800" />
+                    {/* Hero Stats */}
+                    <View style={styles.statsContainer}>
+                        <StatCard
+                            title="Institutions"
+                            value={loading ? "..." : stats.colleges}
+                            icon="business"
+                            colors={['#A855F7', '#7E22CE']}
+                            glowColor="#A855F7"
+                        />
+                        <StatCard
+                            title="Global Events"
+                            value={loading ? "..." : stats.events}
+                            icon="flash"
+                            colors={['#06B6D4', '#0891B2']}
+                            glowColor="#06B6D4"
+                        />
+                        <StatCard
+                            title="User Base"
+                            value={loading ? "..." : stats.students}
+                            icon="people"
+                            colors={['#F59E0B', '#D97706']}
+                            glowColor="#F59E0B"
+                        />
+                    </View>
+
+                    {/* Console Header */}
+                    <View style={styles.consoleSection}>
+                        <View style={styles.consoleHeader}>
+                            <View style={styles.consoleLine} />
+                            <Text style={styles.consoleHeaderText}>ADMINISTRATION CONSOLE</Text>
+                            <View style={styles.consoleLine} />
                         </View>
-                        <Text style={styles.overviewLabel}>Colleges</Text>
-                        <Text style={styles.overviewValue}>{loading ? '-' : stats.colleges}</Text>
-                        <View style={[styles.trendBadge, { backgroundColor: '#E8F5E9' }]}>
-                            <Text style={[styles.trendText, { color: '#4CAF50' }]}>~2%</Text>
+
+                        {/* Menu Actions */}
+                        <View style={styles.menuGrid}>
+                            <MenuButton
+                                title="Institutional Directory"
+                                subtitle="Verify and manage campus access"
+                                icon="shield-checkmark"
+                                color="#A855F7"
+                                onPress={() => navigation.navigate('CollegeList')}
+                            />
+                            <MenuButton
+                                title="Live Activity Monitor"
+                                subtitle="Real-time global event tracking"
+                                icon="radio"
+                                color="#06B6D4"
+                                onPress={() => navigation.navigate('EventMonitor')}
+                            />
+                            <MenuButton
+                                title="Intelligence & Reports"
+                                subtitle="Revenue analytics and performance"
+                                icon="stats-chart"
+                                color="#F59E0B"
+                                onPress={() => navigation.navigate('SystemReports')}
+                            />
                         </View>
                     </View>
 
-                    {/* Students Card */}
-                    <View style={styles.overviewCard}>
-                        <View style={[styles.iconBox, { backgroundColor: '#E3F2FD' }]}>
-                            <Ionicons name="people" size={24} color="#2196F3" />
-                        </View>
-                        <Text style={styles.overviewLabel}>Students</Text>
-                        <Text style={styles.overviewValue}>{loading ? '-' : stats.students}</Text>
-                        <View style={[styles.trendBadge, { backgroundColor: '#E8F5E9' }]}>
-                            <Text style={[styles.trendText, { color: '#4CAF50' }]}>~5%</Text>
-                        </View>
+                    <View style={styles.systemFooter}>
+                        <View style={styles.scanLine} />
+                        <Text style={styles.systemText}>SYSTEM LOG: ACCESS AUTHORIZED • v2.1.0-NEO</Text>
                     </View>
-                </View>
 
-                {/* Live Events Card (Full Width) */}
-                <View style={styles.liveEventsCard}>
-                    <View style={[styles.iconBox, { backgroundColor: '#E0F7FA' }]}>
-                        <Ionicons name="calendar" size={24} color="#00BCD4" />
-                    </View>
-                    <View style={{ marginLeft: 15, flex: 1 }}>
-                        <Text style={styles.overviewLabel}>Live Events</Text>
-                        <Text style={styles.overviewValue}>{loading ? '-' : stats.events}</Text>
-                    </View>
-                    <View style={[styles.trendBadge, { backgroundColor: '#E8F5E9' }]}>
-                        <Ionicons name="trending-up" size={14} color="#4CAF50" style={{ marginRight: 4 }} />
-                        <Text style={[styles.trendText, { color: '#4CAF50' }]}>+15%</Text>
-                    </View>
-                </View>
-
-                {/* Quick Actions */}
-                <Text style={[styles.sectionTitle, { marginTop: 25 }]}>Quick Actions</Text>
-
-                <TouchableOpacity style={[styles.actionCard, { backgroundColor: '#F57C00' }]} onPress={() => navigation.navigate('CollegeList')}>
-                    <View style={[styles.actionIconBox, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                        <Ionicons name="school" size={24} color="#fff" />
-                    </View>
-                    <View style={styles.actionContent}>
-                        <Text style={styles.actionTitle}>Manage Colleges</Text>
-                        <Text style={styles.actionSubtitle}>Configure institutional data</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={24} color="#fff" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.actionCard, { backgroundColor: '#3F51B5' }]} onPress={() => navigation.navigate('EventMonitor')}>
-                    <View style={[styles.actionIconBox, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                        <Ionicons name="eye" size={24} color="#fff" />
-                    </View>
-                    <View style={styles.actionContent}>
-                        <Text style={styles.actionTitle}>Event Monitor</Text>
-                        <Text style={styles.actionSubtitle}>Real-time attendance & logs</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={24} color="#fff" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.actionCard, { backgroundColor: '#00C853' }]} onPress={() => navigation.navigate('SystemReports')}>
-                    <View style={[styles.actionIconBox, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                        <Ionicons name="stats-chart" size={24} color="#fff" />
-                    </View>
-                    <View style={styles.actionContent}>
-                        <Text style={styles.actionTitle}>Reports</Text>
-                        <Text style={styles.actionSubtitle}>Export analytics & summaries</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={24} color="#fff" />
-                </TouchableOpacity>
-
-                <View style={{ height: 100 }} />
-            </ScrollView>
-        </SafeAreaView>
+                </ScrollView>
+            </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    mainContainer: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
+        backgroundColor: '#020617',
     },
+    meshContainer: {
+        ...StyleSheet.absoluteFillObject,
+        overflow: 'hidden',
+    },
+    orb: {
+        position: 'absolute',
+        width: width * 1.2,
+        height: width * 1.2,
+        borderRadius: width * 0.6,
+        opacity: 0.15,
+    },
+    orb1: { top: -200, left: -200 },
+    orb2: { bottom: -200, right: -200 },
+    orb3: { top: '30%', left: '10%', width: width * 0.8, height: width * 0.8, opacity: 0.1 },
+    safeArea: { flex: 1 },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 20,
+        paddingHorizontal: 25,
+        paddingTop: 15,
+        paddingBottom: 25,
     },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    logoIcon: {
-        width: 35,
-        height: 35,
-        backgroundColor: '#E0F7FA',
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 10,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    logoutBtn: {
-        width: 35,
-        height: 35,
-        backgroundColor: '#FFEBEE',
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    content: {
-        padding: 20,
-    },
-
-    // Status Card
-    statusCard: {
-        backgroundColor: '#fff',
-        borderRadius: 25,
-        padding: 25,
-        marginBottom: 25,
-        flexDirection: 'row',
-        overflow: 'hidden',
-        elevation: 5,
-        shadowColor: '#00BCD4',
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 5 },
-    },
-    statusContent: {
-        flex: 1,
-        zIndex: 2,
-    },
-    statusLabel: {
-        color: '#00BCD4',
-        fontWeight: 'bold',
+    welcomeText: {
+        color: 'rgba(255,255,255,0.4)',
         fontSize: 12,
-        marginBottom: 8,
-        letterSpacing: 1,
-    },
-    welcomeTitle: {
-        fontSize: 22,
         fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 8,
+        letterSpacing: 2,
     },
-    statusDesc: {
-        color: '#78909C',
-        fontSize: 14,
-        marginBottom: 20,
-        lineHeight: 20,
+    brandText: {
+        color: '#FFFFFF',
+        fontSize: 28,
+        fontWeight: '900',
+        letterSpacing: -1,
     },
-    decorativeCircle: {
+    logoutCircle: {
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    scrollContent: { paddingBottom: 40 },
+    statsContainer: {
+        paddingHorizontal: 25,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    neoStatCard: {
+        width: (width - 65) / 2,
+        height: 160,
+        marginBottom: 15,
+        position: 'relative',
+    },
+    glowContainer: {
         position: 'absolute',
-        right: -30,
-        top: -30,
-        width: 150,
-        height: 150,
-        borderRadius: 75,
-        backgroundColor: '#ECEFF1',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1,
+        top: 15,
+        left: 15,
+        right: 15,
+        bottom: 15,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 20,
+        elevation: 10,
     },
-    // Section Header
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#37474F',
-    },
-    liveBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    liveText: {
-        color: '#00BCD4',
-        fontWeight: 'bold',
-        marginRight: 5,
-        fontSize: 12,
-    },
-    liveDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#00BCD4',
-    },
-    // Overview Grid
-    overviewGrid: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 15,
-    },
-    overviewCard: {
-        backgroundColor: '#fff',
-        width: '48%',
-        padding: 15,
-        borderRadius: 20,
-        elevation: 2,
-    },
-    iconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    overviewLabel: {
-        color: '#78909C',
-        fontSize: 14,
-        marginBottom: 5,
-    },
-    overviewValue: {
-        color: '#333',
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
-    trendBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 10,
-        alignSelf: 'flex-start',
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    trendText: {
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    // Live Events Card
-    liveEventsCard: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 15,
-        flexDirection: 'row',
-        alignItems: 'center',
-        elevation: 2,
-        marginBottom: 10,
-    },
-    // Action Cards
-    actionCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 20,
-        borderRadius: 20,
-        marginBottom: 15,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        shadowOffset: { width: 0, height: 4 },
-    },
-    actionIconBox: {
-        width: 50,
-        height: 50,
-        borderRadius: 15,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    actionContent: {
+    neoStatInner: {
         flex: 1,
-        marginLeft: 15,
+        borderRadius: 30,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
+        justifyContent: 'space-between',
     },
-    actionTitle: {
-        color: '#fff',
-        fontSize: 18,
+    statIconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statContent: {
+        marginTop: 10,
+    },
+    neoStatValue: {
+        color: '#FFFFFF',
+        fontSize: 32,
         fontWeight: 'bold',
+        letterSpacing: -1,
     },
-    actionSubtitle: {
-        color: 'rgba(255,255,255,0.8)',
-        fontSize: 13,
+    neoStatTitle: {
+        color: 'rgba(255,255,255,0.4)',
+        fontSize: 9,
+        fontWeight: 'bold',
+        letterSpacing: 1,
         marginTop: 2,
     },
+    consoleSection: {
+        marginTop: 25,
+        paddingHorizontal: 25,
+    },
+    consoleHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 25,
+    },
+    consoleLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+    },
+    consoleHeaderText: {
+        color: 'rgba(255,255,255,0.3)',
+        fontSize: 10,
+        fontWeight: 'bold',
+        letterSpacing: 2,
+        paddingHorizontal: 15,
+    },
+    menuGrid: {
+        gap: 15,
+    },
+    neoMenuBtn: {
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.02)',
+    },
+    neoMenuInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+    },
+    menuIconBox: {
+        width: 60,
+        height: 60,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    menuText: {
+        flex: 1,
+        marginLeft: 20,
+    },
+    neoMenuTitle: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    neoMenuSub: {
+        color: 'rgba(255,255,255,0.4)',
+        fontSize: 12,
+        marginTop: 4,
+    },
+    menuArrow: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    systemFooter: {
+        marginTop: 50,
+        alignItems: 'center',
+        paddingHorizontal: 40,
+    },
+    scanLine: {
+        width: 100,
+        height: 2,
+        backgroundColor: '#A855F7',
+        borderRadius: 1,
+        marginBottom: 15,
+        shadowColor: '#A855F7',
+        shadowOpacity: 0.8,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 0 },
+        elevation: 10,
+    },
+    systemText: {
+        color: 'rgba(255,255,255,0.2)',
+        fontSize: 10,
+        fontWeight: 'bold',
+        letterSpacing: 1,
+    }
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput, Dimensions, Modal, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EventService } from '../services/event.service';
 import { CollegeService } from '../services/college.service';
@@ -7,16 +7,15 @@ import { AuthService } from '../services/auth.service';
 import { IEvent, IDepartment, ICollege } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { useNavigation } from '@react-navigation/native';
-import DateTimePicker from '@react-native-community/datetimepicker'; // Ensure this is installed/available, or copy logic
-import { Modal, ScrollView, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
+const { width } = Dimensions.get('window');
 
 export default function EventMonitor() {
-    const navigation = useNavigation<any>();
     const [events, setEvents] = useState<IEvent[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Create Event Form State
     const [modalVisible, setModalVisible] = useState(false);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -34,6 +33,9 @@ export default function EventMonitor() {
     const [selectedCollegeId, setSelectedCollegeId] = useState('');
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed'>('all');
+
     useEffect(() => {
         loadData();
     }, []);
@@ -45,13 +47,11 @@ export default function EventMonitor() {
             setIsSuperAdmin(!user.collegeId);
 
             if (user.collegeId) {
-                // College Admin
                 setSelectedCollegeId(user.collegeId);
                 fetchCollegeData(user.collegeId);
                 const data = await EventService.getEvents({ collegeId: user.collegeId });
                 setEvents(data as IEvent[]);
             } else {
-                // Super Admin
                 const allColleges = await CollegeService.getColleges();
                 setColleges(allColleges as ICollege[]);
                 const data = await EventService.getEvents();
@@ -65,12 +65,14 @@ export default function EventMonitor() {
     };
 
     const fetchCollegeData = async (cId: string) => {
-        const depts = await CollegeService.getDepartments(cId);
-        setDepartments(depts);
         try {
+            const depts = await CollegeService.getDepartments(cId);
+            setDepartments(depts as IDepartment[]);
             const coords = await CollegeService.getCoordinators();
-            setAvailableCoordinators(coords);
-        } catch (e) { console.log("Coordinator fetch skipped/failed"); }
+            setAvailableCoordinators(coords as any[]);
+        } catch (e) {
+            console.log("Secondary data fetch error");
+        }
     };
 
     const handleCreate = async () => {
@@ -91,20 +93,11 @@ export default function EventMonitor() {
                 collegeId: selectedCollegeId
             });
             setModalVisible(false);
-            // Reset
             setName(''); setDescription(''); setFee(''); setVenue(''); setMaxParticipants('100'); setSelectedCoordinators([]);
             loadData();
-            Alert.alert("Success", "Event Created");
+            Alert.alert("Success", "Mission Commenced: Event Created");
         } catch (e: any) {
-            Alert.alert("Error", e.response?.data?.message || "Failed to create event");
-        }
-    };
-
-    const toggleCoordinator = (id: string) => {
-        if (selectedCoordinators.includes(id)) {
-            setSelectedCoordinators(prev => prev.filter(c => c !== id));
-        } else {
-            setSelectedCoordinators(prev => [...prev, id]);
+            Alert.alert("Error", e.response?.data?.message || "Deployment failed");
         }
     };
 
@@ -114,414 +107,243 @@ export default function EventMonitor() {
     };
 
     const confirmDelete = (id: string) => {
-        Alert.alert(
-            "Delete Event",
-            "Are you sure you want to delete this event?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await EventService.deleteEvent(id);
-                            loadData(); // Refresh list
-                            Alert.alert("Success", "Event deleted");
-                        } catch (e: any) {
-                            Alert.alert("Error", e.response?.data?.message || "Failed to delete");
-                        }
-                    }
+        Alert.alert("Terminate Event", "Are you sure you want to cease this operation?", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Terminate", style: "destructive", onPress: async () => {
+                    await EventService.deleteEvent(id);
+                    loadData();
                 }
-            ]
-        );
+            }
+        ]);
     };
 
     const confirmComplete = (id: string) => {
-        Alert.alert(
-            "Complete Event",
-            "Mark this event as completed? It will be closed for all users.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Complete",
-                    onPress: async () => {
-                        try {
-                            await EventService.completeEvent(id);
-                            loadData();
-                            Alert.alert("Success", "Event marked as completed");
-                        } catch (e: any) {
-                            Alert.alert("Error", e.response?.data?.message || "Failed to update");
-                        }
-                    }
+        Alert.alert("Conclude Operation", "Mark this event as fulfilled?", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Conclude", onPress: async () => {
+                    await EventService.completeEvent(id);
+                    loadData();
                 }
-            ]
-        );
-    };
-
-    const renderItem = ({ item }: { item: IEvent }) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <View style={[styles.badge, { backgroundColor: item.completed ? '#37474F' : '#004D40' }]}>
-                    <View style={[styles.badgeDot, { backgroundColor: item.completed ? '#B0BEC5' : '#00E676' }]} />
-                    <Text style={[styles.badgeText, { color: item.completed ? '#B0BEC5' : '#00E676' }]}>
-                        {item.completed ? 'COMPLETED' : 'ACTIVE'}
-                    </Text>
-                </View>
-            </View>
-
-            <View style={styles.cardContent}>
-                <Text style={styles.eventName}>{item.name}</Text>
-
-                <View style={styles.row}>
-                    <Ionicons name="calendar-outline" size={14} color="#78909C" style={{ marginRight: 6 }} />
-                    <Text style={styles.details}>{new Date(item.date).toDateString()}</Text>
-                </View>
-                <View style={styles.row}>
-                    <Ionicons name="location-outline" size={14} color="#78909C" style={{ marginRight: 6 }} />
-                    <Text style={styles.details}>{item.venue}</Text>
-                </View>
-            </View>
-
-            <View style={styles.actionButtons}>
-                {!item.completed && (
-                    <TouchableOpacity onPress={() => confirmComplete(item._id)} style={styles.completeBtn}>
-                        <Ionicons name="checkmark" size={20} color="#fff" />
-                    </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => confirmDelete(item._id)} style={styles.deleteBtn}>
-                    <Ionicons name="trash" size={20} color="#fff" />
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    const [searchVisible, setSearchVisible] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed'>('all');
-
-    const toggleSearch = () => {
-        setSearchVisible(!searchVisible);
-        if (searchVisible) setSearchQuery(''); // Clear on close
-    };
-
-    const showFilterOptions = () => {
-        Alert.alert('Filter Events', 'Choose status to display', [
-            { text: 'All', onPress: () => setFilterStatus('all') },
-            { text: 'Active', onPress: () => setFilterStatus('active') },
-            { text: 'Completed', onPress: () => setFilterStatus('completed') },
-            { text: 'Cancel', style: 'cancel' }
+            }
         ]);
     };
 
     const filteredEvents = events.filter(event => {
         const matchesSearch = event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             event.venue.toLowerCase().includes(searchQuery.toLowerCase());
-
         if (filterStatus === 'all') return matchesSearch;
-        if (filterStatus === 'active') return matchesSearch && !event.completed;
-        if (filterStatus === 'completed') return matchesSearch && event.completed;
-        return matchesSearch;
+        return matchesSearch && (filterStatus === 'active' ? !event.completed : event.completed);
     });
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar style="light" />
-            {/* Dark Header */}
-            <View style={styles.header}>
-                {!searchVisible ? (
-                    <>
-                        <View style={styles.logoBox}>
-                            <Ionicons name="layers" size={24} color="#00E676" />
+    const renderItem = ({ item }: { item: IEvent }) => (
+        <View style={styles.neoFeedItem}>
+            <View style={styles.timelineContainer}>
+                <View style={[styles.timelineDot, { backgroundColor: item.completed ? 'rgba(255,255,255,0.2)' : '#06B6D4' }]} />
+                <View style={styles.timelineLine} />
+            </View>
+
+            <View style={styles.cardContainer}>
+                <LinearGradient
+                    colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']}
+                    style={styles.cardInner}
+                >
+                    <View style={styles.cardHeader}>
+                        <View style={[styles.neoStatus, { borderColor: item.completed ? 'rgba(255,255,255,0.1)' : '#06B6D420' }]}>
+                            <View style={[styles.glowDot, { backgroundColor: item.completed ? '#64748b' : '#06B6D4', shadowColor: item.completed ? 'transparent' : '#06B6D4' }]} />
+                            <Text style={[styles.statusText, { color: item.completed ? 'rgba(255,255,255,0.4)' : '#06B6D4' }]}>
+                                {item.completed ? 'ARCHIVED' : 'LIVE'}
+                            </Text>
                         </View>
-                        <Text style={styles.headerTitle}>Event Monitor</Text>
-                    </>
-                ) : (
+                        <Text style={styles.timeTag}>{new Date(item.date).toLocaleDateString()}</Text>
+                    </View>
+
+                    <Text style={styles.eventName}>{item.name}</Text>
+
+                    <View style={styles.metaInfo}>
+                        <View style={styles.metaRow}>
+                            <Ionicons name="location" size={12} color="rgba(255,255,255,0.4)" />
+                            <Text style={styles.metaValue}>{item.venue}</Text>
+                        </View>
+                        <View style={styles.metaRow}>
+                            <Ionicons name="people" size={12} color="rgba(255,255,255,0.4)" />
+                            <Text style={styles.metaValue}>{item.maxParticipants} slots</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.actionRow}>
+                        {!item.completed && (
+                            <TouchableOpacity onPress={() => confirmComplete(item._id)} style={styles.completeBtn}>
+                                <Ionicons name="checkmark-done" size={20} color="#10B981" />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={() => confirmDelete(item._id)} style={styles.deleteBtn}>
+                            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                </LinearGradient>
+            </View>
+        </View>
+    );
+
+    return (
+        <View style={styles.mainContainer}>
+            <StatusBar style="light" />
+            <View style={styles.meshContainer}>
+                <LinearGradient colors={['#A855F7', 'transparent']} style={[styles.orb, styles.orb1]} />
+                <LinearGradient colors={['#F59E0B', 'transparent']} style={[styles.orb, styles.orb2]} />
+            </View>
+
+            <SafeAreaView style={styles.safeArea}>
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.brandSubtitle}>SYSTEM FEED</Text>
+                        <Text style={styles.brandTitle}>EVENT MONITOR</Text>
+                    </View>
+                    <TouchableOpacity style={styles.filterBtn} onPress={() => setFilterStatus(filterStatus === 'all' ? 'active' : filterStatus === 'active' ? 'completed' : 'all')}>
+                        <Ionicons name="filter" size={20} color={filterStatus === 'all' ? '#fff' : '#A855F7'} />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.searchBar}>
+                    <Ionicons name="search" size={18} color="rgba(255,255,255,0.3)" />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search events..."
-                        placeholderTextColor="#90A4AE"
+                        placeholder="Intercepting events..."
+                        placeholderTextColor="rgba(255,255,255,0.2)"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
-                        autoFocus
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.3)" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {loading ? (
+                    <View style={styles.center}>
+                        <ActivityIndicator color="#A855F7" size="large" />
+                    </View>
+                ) : (
+                    <FlatList
+                        data={filteredEvents}
+                        renderItem={renderItem}
+                        keyExtractor={(item) => item._id}
+                        contentContainerStyle={styles.list}
+                        ListEmptyComponent={<Text style={styles.emptyText}>Feed is clear. No active events.</Text>}
+                        showsVerticalScrollIndicator={false}
                     />
                 )}
 
-                <View style={{ flexDirection: 'row' }}>
-                    <TouchableOpacity style={styles.iconBtn} onPress={toggleSearch}>
-                        <Ionicons name={searchVisible ? "close" : "search"} size={20} color="#CFD8DC" />
+                {!isSuperAdmin && (
+                    <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+                        <LinearGradient colors={['#06B6D4', '#0891B2']} style={styles.fabInner}>
+                            <Ionicons name="add" size={32} color="#fff" />
+                        </LinearGradient>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconBtn} onPress={showFilterOptions}>
-                        <Ionicons name={filterStatus === 'all' ? "options" : "filter"} size={20} color={filterStatus === 'all' ? "#CFD8DC" : "#00E676"} />
-                    </TouchableOpacity>
-                </View>
-            </View>
+                )}
 
-            {/* Filter Status Indicator */}
-            {filterStatus !== 'all' && (
-                <View style={styles.filterBadgeContainer}>
-                    <Text style={styles.filterBadgeText}>Filter: {filterStatus.toUpperCase()}</Text>
-                    <TouchableOpacity onPress={() => setFilterStatus('all')}>
-                        <Ionicons name="close-circle" size={16} color="#00E676" />
-                    </TouchableOpacity>
-                </View>
-            )}
-
-            {loading ? (
-                <ActivityIndicator style={{ marginTop: 20 }} color="#00E676" />
-            ) : (
-                <FlatList
-                    data={filteredEvents}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item._id}
-                    contentContainerStyle={styles.list}
-                    ListEmptyComponent={<Text style={styles.empty}>No events found</Text>}
-                    showsVerticalScrollIndicator={false}
-                />
-            )}
-
-            {/* Analytics FAB - Only for College Admins */}
-            {!isSuperAdmin && (
-                <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-                    <Ionicons name="add" size={32} color="#000" />
-                </TouchableOpacity>
-            )}
-
-            <Modal visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
-                <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-                    <ScrollView contentContainerStyle={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Create Event</Text>
-
-                        {isSuperAdmin && (
-                            <View style={{ marginBottom: 15 }}>
-                                <Text style={styles.label}>Select College *</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
-                                    {colleges.map((c) => (
-                                        <TouchableOpacity
-                                            key={c._id}
-                                            style={[styles.chip, selectedCollegeId === c._id && styles.selectedChip]}
-                                            onPress={() => {
-                                                setSelectedCollegeId(c._id);
-                                                fetchCollegeData(c._id);
-                                            }}
-                                        >
-                                            <Text style={{ color: selectedCollegeId === c._id ? '#fff' : '#000' }}>{c.name}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
+                <Modal visible={modalVisible} animationType="fade" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>COMMENCE EVENT</Text>
+                                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                                    <Ionicons name="close" size={24} color="#fff" />
+                                </TouchableOpacity>
                             </View>
-                        )}
 
-                        <TextInput style={styles.input} placeholder="Event Name" value={name} onChangeText={setName} />
-                        <TextInput style={[styles.input, { height: 60 }]} placeholder="Description" value={description} onChangeText={setDescription} multiline />
-                        <TextInput style={styles.input} placeholder="Venue" value={venue} onChangeText={setVenue} />
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                <Text style={styles.inputLabel}>Event Designation</Text>
+                                <TextInput style={styles.neoInput} placeholder="e.g. Code Hackathon 2.0" placeholderTextColor="rgba(255,255,255,0.2)" value={name} onChangeText={setName} />
 
-                        <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-                            <Text>{date.toDateString()}</Text>
-                            <Ionicons name="calendar-outline" size={20} />
-                        </TouchableOpacity>
+                                <Text style={styles.inputLabel}>Objective Details</Text>
+                                <TextInput style={[styles.neoInput, { height: 100 }]} placeholder="Enter mission scope..." placeholderTextColor="rgba(255,255,255,0.2)" value={description} onChangeText={setDescription} multiline />
 
-                        {showDatePicker && (
-                            <DateTimePicker value={date} mode="date" display="default" onChange={onDateChange} />
-                        )}
+                                <View style={styles.row}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.inputLabel}>Venue</Text>
+                                        <TextInput style={styles.neoInput} placeholder="Hall 4" placeholderTextColor="rgba(255,255,255,0.2)" value={venue} onChangeText={setVenue} />
+                                    </View>
+                                    <View style={{ width: 15 }} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.inputLabel}>Entry Fee</Text>
+                                        <TextInput style={styles.neoInput} keyboardType="numeric" value={fee} onChangeText={setFee} />
+                                    </View>
+                                </View>
 
-                        <TextInput style={styles.input} placeholder="Fee" keyboardType="numeric" value={fee} onChangeText={setFee} />
-                        <TextInput style={styles.input} placeholder="Max Participants" keyboardType="numeric" value={maxParticipants} onChangeText={setMaxParticipants} />
+                                <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
+                                    <Ionicons name="calendar-outline" size={20} color="#06B6D4" />
+                                    <Text style={styles.dateText}>{date.toDateString().toUpperCase()}</Text>
+                                </TouchableOpacity>
 
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
-                            <TouchableOpacity onPress={() => setModalVisible(false)} style={{ padding: 15 }}>
-                                <Text style={{ color: 'red' }}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: '#00E676', padding: 15, borderRadius: 10 }}>
-                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Create Event</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </ScrollView>
-                </SafeAreaView>
-            </Modal>
+                                {showDatePicker && (
+                                    <DateTimePicker value={date} mode="date" display="default" onChange={onDateChange} />
+                                )}
 
-        </SafeAreaView>
+                                <TouchableOpacity style={styles.launchBtn} onPress={handleCreate}>
+                                    <LinearGradient colors={['#06B6D4', '#0891B2']} style={styles.launchBtnInner}>
+                                        <Text style={styles.launchText}>AUTHORIZE DEPLOYMENT</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </LinearGradient>
+                    </View>
+                </Modal>
+            </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#121212', // Dark BG
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 20,
-        backgroundColor: '#121212',
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#fff',
-        flex: 1,
-        marginLeft: 15
-    },
-    searchInput: {
-        flex: 1,
-        color: '#fff',
-        fontSize: 16,
-        paddingHorizontal: 10,
-        backgroundColor: '#1E1E1E',
-        borderRadius: 8,
-        height: 40,
-        marginRight: 10
-    },
-    filterBadgeContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        alignSelf: 'center',
-        backgroundColor: 'rgba(0, 230, 118, 0.1)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        marginBottom: 10,
-        marginTop: -10,
-        borderWidth: 1,
-        borderColor: 'rgba(0, 230, 118, 0.3)'
-    },
-    filterBadgeText: {
-        color: '#00E676',
-        fontSize: 12,
-        fontWeight: 'bold',
-        marginRight: 6
-    },
-    logoBox: {
-        width: 40,
-        height: 40,
-        backgroundColor: '#1E1E1E',
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    iconBtn: {
-        width: 40,
-        height: 40,
-        backgroundColor: '#1E1E1E',
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 10
-    },
-    list: {
-        padding: 20,
-        paddingBottom: 100
-    },
-    card: {
-        backgroundColor: '#1E1E1E',
-        borderRadius: 20,
-        padding: 20,
-        marginBottom: 15,
-        elevation: 5,
-        borderWidth: 1,
-        borderColor: '#333',
-        position: 'relative'
-    },
-    cardHeader: {
-        marginBottom: 10
-    },
-    badge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        alignSelf: 'flex-start',
-        borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.05)',
-        flexDirection: 'row',
-        alignItems: 'center'
-    },
-    badgeDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginRight: 6
-    },
-    badgeText: {
-        fontSize: 10,
-        fontWeight: 'bold',
-        letterSpacing: 1
-    },
-    cardContent: {
-        paddingRight: 0,
-        marginTop: 10
-    },
-    eventName: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#fff',
-        marginBottom: 8
-    },
-    row: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4
-    },
-    details: {
-        fontSize: 13,
-        color: '#90A4AE',
-    },
-    deleteBtn: {
-        width: 45,
-        height: 45,
-        borderRadius: 22.5,
-        backgroundColor: '#F44336',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 5,
-        shadowColor: '#F44336',
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        marginLeft: 10
-    },
-    completeBtn: {
-        width: 45,
-        height: 45,
-        borderRadius: 22.5,
-        backgroundColor: '#00E676',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 5,
-        shadowColor: '#00E676',
-        shadowOpacity: 0.4,
-        shadowRadius: 8
-    },
-    actionButtons: {
-        position: 'absolute',
-        right: 20,
-        top: 20,
-        flexDirection: 'row'
-    },
-    empty: {
-        textAlign: 'center',
-        color: '#546E7A',
-        marginTop: 20,
-    },
-
-    fab: {
-        position: 'absolute',
-        bottom: 25,
-        right: 25,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: '#00E676',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 10,
-        shadowColor: '#00E676',
-        shadowOpacity: 0.4,
-        shadowRadius: 10
-    },
-    modalContent: { padding: 20 },
-    modalTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333' },
-    input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 15, backgroundColor: '#fff', color: '#000' },
-    label: { marginBottom: 8, fontWeight: '600', color: '#333' },
-    chip: { padding: 8, backgroundColor: '#eee', borderRadius: 20, marginRight: 8, marginBottom: 8 },
-    selectedChip: { backgroundColor: '#2196F3' },
-    dateButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 15, backgroundColor: '#fff' }
+    mainContainer: { flex: 1, backgroundColor: '#020617' },
+    meshContainer: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+    orb: { position: 'absolute', width: width, height: width, borderRadius: width / 2, opacity: 0.1 },
+    orb1: { top: -100, right: -100 },
+    orb2: { bottom: -100, left: -100 },
+    safeArea: { flex: 1 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: { paddingHorizontal: 25, paddingVertical: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    brandSubtitle: { color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: 'bold', letterSpacing: 3 },
+    brandTitle: { color: '#fff', fontSize: 32, fontWeight: '900', letterSpacing: -1 },
+    filterBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },
+    searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 25, marginBottom: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, paddingHorizontal: 16, height: 56, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    searchInput: { flex: 1, color: '#fff', fontSize: 16, marginLeft: 12 },
+    list: { paddingLeft: 25, paddingRight: 25, paddingBottom: 100 },
+    neoFeedItem: { flexDirection: 'row', marginBottom: 25 },
+    timelineContainer: { alignItems: 'center', width: 20, marginRight: 15 },
+    timelineDot: { width: 10, height: 10, borderRadius: 5, marginTop: 10, zIndex: 2 },
+    timelineLine: { position: 'absolute', top: 20, bottom: -30, width: 2, backgroundColor: 'rgba(255,255,255,0.05)' },
+    cardContainer: { flex: 1, borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    cardInner: { padding: 20 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    neoStatus: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1 },
+    glowDot: { width: 6, height: 6, borderRadius: 3, marginRight: 8, shadowRadius: 6, shadowOpacity: 1 },
+    statusText: { fontSize: 10, fontWeight: 'bold' },
+    timeTag: { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: 'bold' },
+    eventName: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
+    metaInfo: { flexDirection: 'row', gap: 15 },
+    metaRow: { flexDirection: 'row', alignItems: 'center' },
+    metaValue: { color: 'rgba(255,255,255,0.5)', fontSize: 12, marginLeft: 6 },
+    actionRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 15 },
+    completeBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(16, 185, 129, 0.1)', justifyContent: 'center', alignItems: 'center' },
+    deleteBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(239, 68, 68, 0.1)', justifyContent: 'center', alignItems: 'center' },
+    fab: { position: 'absolute', bottom: 40, right: 25, borderRadius: 33, elevation: 20, shadowColor: '#06B6D4', shadowOpacity: 0.5, shadowRadius: 15 },
+    fabInner: { width: 66, height: 66, borderRadius: 33, justifyContent: 'center', alignItems: 'center' },
+    emptyText: { color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: 40, fontWeight: 'bold' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20 },
+    modalContent: { borderRadius: 32, padding: 30, borderWidth: 1, borderColor: 'rgba(6, 182, 212, 0.2)' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+    modalTitle: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 1 },
+    closeBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },
+    inputLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 'bold', marginBottom: 8, letterSpacing: 1 },
+    neoInput: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, padding: 16, color: '#fff', fontSize: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 20 },
+    row: { flexDirection: 'row' },
+    dateSelector: { flexDirection: 'row', alignItems: 'center', padding: 18, backgroundColor: 'rgba(6, 182, 212, 0.05)', borderRadius: 18, marginBottom: 25, borderWidth: 1, borderColor: 'rgba(6, 182, 212, 0.2)' },
+    dateText: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginLeft: 12, letterSpacing: 1 },
+    launchBtn: { marginBottom: 10 },
+    launchBtnInner: { padding: 20, borderRadius: 20, alignItems: 'center' },
+    launchText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 2 }
 });

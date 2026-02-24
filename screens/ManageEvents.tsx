@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Alert, ScrollView, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Alert, ScrollView, Platform, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { EventService } from '../services/event.service';
@@ -7,25 +7,29 @@ import { CollegeService } from '../services/college.service';
 import { AuthService } from '../services/auth.service';
 import { IEvent, IDepartment, ICollege } from '../types';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
+
+const { width } = Dimensions.get('window');
 
 export default function ManageEvents({ navigation }: any) {
     const [events, setEvents] = useState<IEvent[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     // Form State
     const [name, setName] = useState('');
-    const [description, setDescription] = useState(''); // Added description
+    const [description, setDescription] = useState('');
     const [date, setDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [fee, setFee] = useState('');
     const [venue, setVenue] = useState('');
     const [maxParticipants, setMaxParticipants] = useState('100');
     const [selectedDept, setSelectedDept] = useState('');
-    // const [coordId, setCoordId] = useState(''); // Deprecated
     const [selectedCoordinators, setSelectedCoordinators] = useState<string[]>([]);
 
     const [departments, setDepartments] = useState<IDepartment[]>([]);
-    const [availableCoordinators, setAvailableCoordinators] = useState<any[]>([]); // New list
+    const [availableCoordinators, setAvailableCoordinators] = useState<any[]>([]);
     const [user, setUser] = useState<any>(null);
     const [colleges, setColleges] = useState<ICollege[]>([]);
     const [selectedCollegeId, setSelectedCollegeId] = useState('');
@@ -35,30 +39,37 @@ export default function ManageEvents({ navigation }: any) {
     }, []);
 
     const loadData = async () => {
-        const u = await AuthService.getCurrentUser();
-        setUser(u);
-        if (u?.collegeId) {
-            setSelectedCollegeId(u.collegeId);
-            fetchCollegeData(u.collegeId);
-            const evs = await EventService.getEvents({ collegeId: u.collegeId });
-            setEvents(evs as IEvent[]);
-        } else {
-            // Super Admin: Fetch all colleges and events
-            const allColleges = await CollegeService.getColleges();
-            setColleges(allColleges as ICollege[]);
-            const evs = await EventService.getEvents();
-            setEvents(evs as IEvent[]);
+        try {
+            setLoading(true);
+            const u = await AuthService.getCurrentUser();
+            setUser(u);
+            if (u?.collegeId) {
+                setSelectedCollegeId(u.collegeId);
+                fetchCollegeData(u.collegeId);
+                const evs = await EventService.getEvents({ collegeId: u.collegeId });
+                setEvents(evs as IEvent[]);
+            } else {
+                const allColleges = await CollegeService.getColleges();
+                setColleges(allColleges as ICollege[]);
+                const evs = await EventService.getEvents();
+                setEvents(evs as IEvent[]);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
         }
     };
 
     const fetchCollegeData = async (cId: string) => {
-        const depts = await CollegeService.getDepartments(cId);
-        setDepartments(depts);
-        // Try fetching coordinators - purely optional as it depends on backend context
         try {
+            const depts = await CollegeService.getDepartments(cId);
+            setDepartments(depts);
             const coords = await CollegeService.getCoordinators();
             setAvailableCoordinators(coords);
-        } catch (e) { console.log("Coordinator fetch skipped/failed"); }
+        } catch (e) {
+            console.log("Secondary data fetch error");
+        }
     };
 
     const handleCreate = async () => {
@@ -70,28 +81,24 @@ export default function ManageEvents({ navigation }: any) {
 
             await EventService.createEvent({
                 name,
-                description, // Pass description
+                description,
                 date: date,
                 venue,
                 fee: Number(fee),
                 maxParticipants: Number(maxParticipants),
                 departmentId: selectedDept || null,
-                coordinators: selectedCoordinators, // Send array
+                coordinators: selectedCoordinators,
                 collegeId: selectedCollegeId
             });
             setModalVisible(false);
-            // Reset
             setName(''); setDescription(''); setFee(''); setVenue(''); setMaxParticipants('100'); setSelectedCoordinators([]);
             loadData();
-            Alert.alert("Success", "Event Created");
+            Alert.alert("Success", "Mission Commenced: Event Created");
         } catch (e: any) {
-            console.error("Event Create Error:", e);
-            const errorMsg = e.response?.data?.message || e.message || "Failed to create event";
-            Alert.alert("Error", errorMsg);
+            Alert.alert("Error", e.response?.data?.message || "Deployment failed");
         }
     };
 
-    // Toggle coordinator selection
     const toggleCoordinator = (id: string) => {
         if (selectedCoordinators.includes(id)) {
             setSelectedCoordinators(prev => prev.filter(c => c !== id));
@@ -101,235 +108,234 @@ export default function ManageEvents({ navigation }: any) {
     };
 
     const confirmDelete = (id: string) => {
-        Alert.alert(
-            "Delete Event",
-            "Are you sure you want to delete this event? This cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await EventService.deleteEvent(id);
-                            loadData(); // Refresh list
-                            Alert.alert("Success", "Event deleted");
-                        } catch (e: any) {
-                            Alert.alert("Error", e.response?.data?.message || "Failed to delete");
-                        }
-                    }
+        Alert.alert("Terminate Event", "Are you sure you want to cease this operation?", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Terminate", style: "destructive", onPress: async () => {
+                    await EventService.deleteEvent(id);
+                    loadData();
                 }
-            ]
-        );
+            }
+        ]);
     };
 
     const confirmComplete = (id: string) => {
-        Alert.alert(
-            "Complete Event",
-            "Mark this event as completed? This will allow certificate generation.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Complete",
-                    onPress: async () => {
-                        try {
-                            await EventService.completeEvent(id);
-                            loadData();
-                            Alert.alert("Success", "Event marked as completed");
-                        } catch (e: any) {
-                            Alert.alert("Error", e.response?.data?.message || "Failed");
-                        }
-                    }
+        Alert.alert("Conclude Operation", "Mark this event as fulfilled?", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Conclude", onPress: async () => {
+                    await EventService.completeEvent(id);
+                    loadData();
                 }
-            ]
-        );
+            }
+        ]);
     };
 
     const onDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(Platform.OS === 'ios');
-        if (selectedDate) {
-            setDate(selectedDate);
-        }
+        if (selectedDate) setDate(selectedDate);
     };
 
     const renderEventItem = ({ item }: { item: IEvent }) => (
-        <View style={styles.card}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.eventName}>{item.name} {item.completed && <Text style={{ color: 'green', fontSize: 14 }}>(Completed)</Text>}</Text>
-                    <Text>{new Date(item.date).toDateString()}</Text>
-                    <Text>Fee: ₹{item.fee}</Text>
-                    <Text style={styles.subtitle}>{item.venue}</Text>
-                </View>
-                <View style={{ flexDirection: 'row' }}>
-                    {!item.completed && (
-                        <TouchableOpacity onPress={() => confirmComplete(item._id)} style={{ padding: 10 }}>
-                            <Ionicons name="checkmark-done-circle-outline" size={24} color="#2196F3" />
+        <View style={styles.neoCard}>
+            <LinearGradient
+                colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)']}
+                style={styles.cardInner}
+            >
+                <View style={styles.cardHeader}>
+                    <View style={styles.eventInfo}>
+                        <Text style={styles.eventName}>{item.name}</Text>
+                        <View style={styles.tagRow}>
+                            <View style={[styles.statusTag, { backgroundColor: item.completed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(6, 182, 212, 0.1)' }]}>
+                                <Text style={[styles.statusText, { color: item.completed ? '#10B981' : '#06B6D4' }]}>
+                                    {item.completed ? 'COMPLETED' : 'ONGOING'}
+                                </Text>
+                            </View>
+                            <Text style={styles.venueText}>{item.venue}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.actionColumn}>
+                        {!item.completed && (
+                            <TouchableOpacity onPress={() => confirmComplete(item._id)} style={styles.actionIconBtn}>
+                                <Ionicons name="checkmark-done-circle" size={24} color="#10B981" />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={() => navigation.navigate('EventRegistrations', { eventId: item._id, eventName: item.name })} style={styles.actionIconBtn}>
+                            <Ionicons name="people" size={24} color="#A855F7" />
                         </TouchableOpacity>
-                    )}
-                    <TouchableOpacity onPress={() => navigation.navigate('EventRegistrations', { eventId: item._id, eventName: item.name })} style={{ padding: 10 }}>
-                        <Ionicons name="people-outline" size={24} color="#4CAF50" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => confirmDelete(item._id)} style={{ padding: 10 }}>
-                        <Ionicons name="trash-outline" size={24} color="#F44336" />
-                    </TouchableOpacity>
+                        <TouchableOpacity onPress={() => confirmDelete(item._id)} style={styles.actionIconBtn}>
+                            <Ionicons name="trash" size={24} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
+
+                <View style={styles.cardFooter}>
+                    <View style={styles.metaBox}>
+                        <Ionicons name="calendar" size={12} color="rgba(255,255,255,0.4)" />
+                        <Text style={styles.metaText}>{new Date(item.date).toDateString()}</Text>
+                    </View>
+                    <View style={styles.metaBox}>
+                        <Ionicons name="wallet" size={12} color="rgba(255,255,255,0.4)" />
+                        <Text style={styles.metaText}>₹{item.fee}</Text>
+                    </View>
+                </View>
+            </LinearGradient>
         </View>
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Manage Events</Text>
-                <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-                    <Ionicons name="add" size={24} color="#fff" />
-                </TouchableOpacity>
+        <View style={styles.mainContainer}>
+            <StatusBar style="light" />
+            <View style={styles.meshContainer}>
+                <LinearGradient colors={['#EC4899', 'transparent']} style={[styles.orb, styles.orb1]} />
+                <LinearGradient colors={['#3B82F6', 'transparent']} style={[styles.orb, styles.orb2]} />
             </View>
 
-            <FlatList
-                data={events}
-                keyExtractor={item => item._id}
-                renderItem={renderEventItem}
-                style={styles.list}
-            />
+            <SafeAreaView style={styles.safeArea}>
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.brandSubtitle}>EVENT CONTROL</Text>
+                        <Text style={styles.brandTitle}>OPERATIONS</Text>
+                    </View>
+                    <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
+                        <LinearGradient colors={['#06B6D4', '#0891B2']} style={styles.addBtnInner}>
+                            <Ionicons name="add" size={28} color="#fff" />
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </View>
 
-            <Modal
-                visible={modalVisible}
-                animationType="slide"
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <SafeAreaView style={{ flex: 1 }}>
-                    <ScrollView contentContainerStyle={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Create Event</Text>
+                {loading ? (
+                    <View style={styles.center}>
+                        <ActivityIndicator color="#06B6D4" size="large" />
+                    </View>
+                ) : (
+                    <FlatList
+                        data={events}
+                        keyExtractor={item => item._id}
+                        renderItem={renderEventItem}
+                        contentContainerStyle={styles.list}
+                        showsVerticalScrollIndicator={false}
+                        ListEmptyComponent={<Text style={styles.emptyText}>No active operations detectred.</Text>}
+                    />
+                )}
 
-                        {/* College Selection for Super Admin */}
-                        {!user?.collegeId && (
-                            <View style={{ marginBottom: 15 }}>
-                                <Text style={styles.label}>Select College *</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
-                                    {colleges.map((c) => (
-                                        <TouchableOpacity
-                                            key={c._id}
-                                            style={[styles.chip, selectedCollegeId === c._id && styles.selectedChip]}
-                                            onPress={() => {
-                                                setSelectedCollegeId(c._id);
-                                                fetchCollegeData(c._id);
-                                            }}
-                                        >
-                                            <Text style={{ color: selectedCollegeId === c._id ? '#fff' : '#000' }}>{c.name}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
+                <Modal visible={modalVisible} animationType="fade" transparent={true}>
+                    <View style={styles.modalOverlay}>
+                        <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>NEW OPERATION</Text>
+                                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                                    <Ionicons name="close" size={24} color="#fff" />
+                                </TouchableOpacity>
                             </View>
-                        )}
 
-                        <Text style={styles.label}>Basic Info</Text>
-                        <TextInput style={styles.input} placeholder="Event Name" value={name} onChangeText={setName} />
-                        <TextInput
-                            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-                            placeholder="Event Description (What's this event about?)"
-                            value={description}
-                            onChangeText={setDescription}
-                            multiline
-                        />
-                        <TextInput style={styles.input} placeholder="Venue" value={venue} onChangeText={setVenue} />
-
-                        <Text style={styles.label}>Event Date</Text>
-                        <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-                            <Text style={styles.dateText}>{date.toDateString()}</Text>
-                            <Ionicons name="calendar-outline" size={20} color="#666" />
-                        </TouchableOpacity>
-
-                        {showDatePicker && (
-                            <DateTimePicker
-                                value={date}
-                                mode="date"
-                                display="default"
-                                onChange={onDateChange}
-                            />
-                        )}
-
-                        <Text style={styles.label}>Details</Text>
-                        <TextInput style={styles.input} placeholder="Fee (0 for free)" keyboardType="numeric" value={fee} onChangeText={setFee} />
-                        <TextInput style={styles.input} placeholder="Max Participants" keyboardType="numeric" value={maxParticipants} onChangeText={setMaxParticipants} />
-
-
-                        <Text style={styles.label}>Assign Coordinators:</Text>
-                        <View style={styles.coordList}>
-                            {availableCoordinators.length > 0 ? availableCoordinators.map((c: any) => (
-                                <TouchableOpacity
-                                    key={c._id}
-                                    style={[styles.coordItem, selectedCoordinators.includes(c._id) && styles.selectedCoord]}
-                                    onPress={() => toggleCoordinator(c._id)}
-                                >
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <Ionicons
-                                            name={selectedCoordinators.includes(c._id) ? "checkbox" : "square-outline"}
-                                            size={20}
-                                            color={selectedCoordinators.includes(c._id) ? "#fff" : "#666"}
-                                        />
-                                        <Text style={[styles.coordName, selectedCoordinators.includes(c._id) && { color: '#fff' }]}>{c.name}</Text>
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {!user?.collegeId && (
+                                    <View style={{ marginBottom: 20 }}>
+                                        <Text style={styles.inputLabel}>SELECT INSTITUTION</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                            {colleges.map((c) => (
+                                                <TouchableOpacity
+                                                    key={c._id}
+                                                    style={[styles.chip, selectedCollegeId === c._id && styles.selectedChip]}
+                                                    onPress={() => {
+                                                        setSelectedCollegeId(c._id);
+                                                        fetchCollegeData(c._id);
+                                                    }}
+                                                >
+                                                    <Text style={[styles.chipText, selectedCollegeId === c._id && { color: '#fff' }]}>{c.name}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
                                     </View>
+                                )}
+
+                                <Text style={styles.inputLabel}>OPERATIONAL NAME</Text>
+                                <TextInput style={styles.neoInput} placeholder="Mission Designation" placeholderTextColor="rgba(255,255,255,0.2)" value={name} onChangeText={setName} />
+
+                                <Text style={styles.inputLabel}>SCOPE DETAILS</Text>
+                                <TextInput style={[styles.neoInput, { height: 100 }]} placeholder="Operational objectives..." placeholderTextColor="rgba(255,255,255,0.2)" value={description} onChangeText={setDescription} multiline />
+
+                                <View style={styles.row}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.inputLabel}>VENUE</Text>
+                                        <TextInput style={styles.neoInput} placeholder="Loc: Area 51" placeholderTextColor="rgba(255,255,255,0.2)" value={venue} onChangeText={setVenue} />
+                                    </View>
+                                    <View style={{ width: 15 }} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.inputLabel}>FEE (INR)</Text>
+                                        <TextInput style={styles.neoInput} keyboardType="numeric" value={fee} onChangeText={setFee} />
+                                    </View>
+                                </View>
+
+                                <Text style={styles.inputLabel}>SCHEDULED DATE</Text>
+                                <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
+                                    <Ionicons name="calendar-outline" size={20} color="#06B6D4" />
+                                    <Text style={styles.dateText}>{date.toDateString().toUpperCase()}</Text>
                                 </TouchableOpacity>
-                            )) : (
-                                <Text style={{ color: '#999', fontStyle: 'italic' }}>No coordinators found. Create them first.</Text>
-                            )}
-                        </View>
 
-                        <Text style={styles.label}>Select Department (Optional):</Text>
-                        <View style={styles.deptList}>
-                            {departments.map((d: any) => (
-                                <TouchableOpacity
-                                    key={d._id}
-                                    style={[styles.chip, selectedDept === d._id && styles.selectedChip]}
-                                    onPress={() => setSelectedDept(d._id)}
-                                >
-                                    <Text style={{ color: selectedDept === d._id ? '#fff' : '#000' }}>{d.name}</Text>
+                                {showDatePicker && (
+                                    <DateTimePicker value={date} mode="date" display="default" onChange={onDateChange} />
+                                )}
+
+                                <TouchableOpacity style={styles.launchBtn} onPress={handleCreate}>
+                                    <LinearGradient colors={['#06B6D4', '#0891B2']} style={styles.launchBtnInner}>
+                                        <Text style={styles.launchText}>AUTHORIZE DEPLOYMENT</Text>
+                                    </LinearGradient>
                                 </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        <TouchableOpacity style={styles.submitBtn} onPress={handleCreate}>
-                            <Text style={styles.submitText}>Create Event</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
-                            <Text>Cancel</Text>
-                        </TouchableOpacity>
-
-                    </ScrollView>
-                </SafeAreaView>
-            </Modal>
-
-        </SafeAreaView>
+                                <View style={{ height: 30 }} />
+                            </ScrollView>
+                        </LinearGradient>
+                    </View>
+                </Modal>
+            </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f0f2f5' },
-    header: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#fff', alignItems: 'center' },
-    title: { fontSize: 22, fontWeight: 'bold' },
-    addButton: { backgroundColor: '#2196F3', padding: 10, borderRadius: 20 },
-    list: { padding: 20 },
-    card: { backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, elevation: 2 },
-    eventName: { fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
-    subtitle: { color: '#666', marginTop: 5 },
-    modalContent: { padding: 20 },
-    modalTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-    input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 15, backgroundColor: '#fff' },
-    dateButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 15, backgroundColor: '#fff' },
-    dateText: { fontSize: 16 },
-    label: { marginBottom: 8, fontWeight: '600', color: '#333' },
-    deptList: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
-    chip: { padding: 8, backgroundColor: '#eee', borderRadius: 20, marginRight: 8, marginBottom: 8 },
-    selectedChip: { backgroundColor: '#2196F3' },
-
-    coordList: { marginBottom: 20, maxHeight: 150 }, // Allow scrolling if needed but FlatList inside ScrollView warns
-    coordItem: { flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: '#f0f0f0', borderRadius: 8, marginBottom: 5 },
-    selectedCoord: { backgroundColor: '#4CAF50' },
-    coordName: { marginLeft: 10, fontSize: 16 },
-
-    submitBtn: { backgroundColor: '#2196F3', padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 10 },
-    submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    closeBtn: { padding: 15, alignItems: 'center' }
+    mainContainer: { flex: 1, backgroundColor: '#020617' },
+    meshContainer: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+    orb: { position: 'absolute', width: width, height: width, borderRadius: width / 2, opacity: 0.1 },
+    orb1: { top: -200, right: -100 },
+    orb2: { bottom: -200, left: -100 },
+    safeArea: { flex: 1 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: { paddingHorizontal: 25, paddingVertical: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    brandSubtitle: { color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: 'bold', letterSpacing: 3 },
+    brandTitle: { color: '#fff', fontSize: 32, fontWeight: '900', letterSpacing: -1 },
+    addBtn: { borderRadius: 18, overflow: 'hidden', elevation: 10, shadowColor: '#06B6D4', shadowOpacity: 0.3, shadowRadius: 10 },
+    addBtnInner: { width: 56, height: 56, justifyContent: 'center', alignItems: 'center' },
+    list: { padding: 25, paddingBottom: 100 },
+    neoCard: { borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 20 },
+    cardInner: { padding: 24 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+    eventInfo: { flex: 1 },
+    eventName: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
+    tagRow: { flexDirection: 'row', alignItems: 'center' },
+    statusTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 10 },
+    statusText: { fontSize: 10, fontWeight: '900' },
+    venueText: { color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 'bold' },
+    actionColumn: { gap: 12 },
+    actionIconBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+    cardFooter: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 15, gap: 20 },
+    metaBox: { flexDirection: 'row', alignItems: 'center' },
+    metaText: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginLeft: 8, fontWeight: 'bold' },
+    emptyText: { color: 'rgba(255,255,255,0.2)', textAlign: 'center', marginTop: 40, fontWeight: 'bold' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20 },
+    modalContent: { borderRadius: 32, padding: 30, borderWidth: 1, borderColor: 'rgba(6, 182, 212, 0.2)', maxHeight: '90%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+    modalTitle: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 1 },
+    closeBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },
+    inputLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 'bold', marginBottom: 8, letterSpacing: 1 },
+    neoInput: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, padding: 16, color: '#fff', fontSize: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 20 },
+    row: { flexDirection: 'row' },
+    dateSelector: { flexDirection: 'row', alignItems: 'center', padding: 18, backgroundColor: 'rgba(6, 182, 212, 0.05)', borderRadius: 18, marginBottom: 25, borderWidth: 1, borderColor: 'rgba(6, 182, 212, 0.2)' },
+    dateText: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginLeft: 12, letterSpacing: 1 },
+    launchBtn: { marginTop: 10 },
+    launchBtnInner: { padding: 20, borderRadius: 20, alignItems: 'center' },
+    launchText: { color: '#fff', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
+    chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', marginRight: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    selectedChip: { backgroundColor: '#06B6D4', borderColor: '#06B6D4' },
+    chipText: { color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 'bold' }
 });

@@ -2,7 +2,10 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const API_URL = 'https://collegeapp-1-8zi4.onrender.com/api';
+// For physical devices, use your computer's local IP address (e.g., 192.168.x.x).
+const API_URL = __DEV__
+    ? 'http://192.168.1.2:3000/api'
+    : 'https://collegeapp-1-8zi4.onrender.com/api';
 
 const api = axios.create({
     baseURL: API_URL,

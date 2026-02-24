@@ -44,8 +44,12 @@ export default function CollegeDashboard() {
                 } else {
                     setShowSubModal(false);
                 }
-            } catch (error) {
-                console.error("Failed to check subscription", error);
+            } catch (error: any) {
+                console.error("❌ Failed to check subscription:", error.message);
+                if (error.response?.status === 404) {
+                    Alert.alert("Data Error", "Your account is linked to a college that no longer exists. Please contact the administrator.");
+                    logout(); // Force logout as the account is in an inconsistent state
+                }
             }
         }
     };

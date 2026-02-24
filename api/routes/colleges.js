@@ -8,6 +8,60 @@ const User = require('../models/User');
 // @route   POST api/colleges
 // @desc    Create a college (Admin only)
 // @access  Private (Admin)
+// @route   GET api/colleges/coordinators
+// @desc    Get all coordinators for the college
+// @access  Private (College)
+router.get('/coordinators', auth, async (req, res) => {
+    if (req.user.role !== 'college') return res.status(403).json({ message: 'Access denied' });
+
+    try {
+        const CollegeUser = await User.findById(req.user.id);
+        const coordinators = await User.find({
+            collegeId: CollegeUser.collegeId,
+            role: 'coordinator'
+        }).select('-passwordHash');
+
+        res.json(coordinators);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   POST api/colleges/coordinators
+// @desc    Create a Coordinator (College Admin only)
+// @access  Private (College)
+router.post('/coordinators', auth, async (req, res) => {
+    if (req.user.role !== 'college') return res.status(403).json({ message: 'Access denied' });
+
+    try {
+        const { name, email, password } = req.body;
+        const CollegeUser = await User.findById(req.user.id);
+
+        let user = await User.findOne({ email });
+        if (user) return res.status(400).json({ message: 'User already exists' });
+
+        const bcrypt = require('bcryptjs');
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        const newCoordinator = new User({
+            name,
+            email,
+            passwordHash,
+            role: 'coordinator',
+            collegeId: CollegeUser.collegeId
+        });
+
+        await newCoordinator.save();
+        res.json(newCoordinator);
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
 router.post('/', auth, async (req, res) => {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Access denied' });
@@ -164,19 +218,10 @@ router.put('/:id', auth, async (req, res) => {
     }
 });
 
-// @route   GET api/colleges/:id
-// @desc    Get college by ID
-// @access  Private
-router.get('/:id', auth, async (req, res) => {
-    try {
-        const college = await College.findById(req.params.id);
-        if (!college) return res.status(404).json({ message: 'College not found' });
-        res.json(college);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-});
+// @route   GET api/colleges/coordinators
+// @desc    Get all coordinators for the college
+// @access  Private (College)
+// Routes will be moved to top
 
 // @route   POST api/colleges/:id/pay
 // @desc    Pay subscription and activate
@@ -259,56 +304,12 @@ router.delete('/departments/:id', auth, async (req, res) => {
 // @route   POST api/colleges/coordinators
 // @desc    Create a Coordinator (College Admin only)
 // @access  Private (College)
-router.post('/coordinators', auth, async (req, res) => {
-    if (req.user.role !== 'college') return res.status(403).json({ message: 'Access denied' });
+// Moved to top
 
-    try {
-        const { name, email, password } = req.body;
-        const CollegeUser = await User.findById(req.user.id);
-
-        let user = await User.findOne({ email });
-        if (user) return res.status(400).json({ message: 'User already exists' });
-
-        const bcrypt = require('bcryptjs');
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
-
-        const newCoordinator = new User({
-            name,
-            email,
-            passwordHash,
-            role: 'coordinator',
-            collegeId: CollegeUser.collegeId
-        });
-
-        await newCoordinator.save();
-        res.json(newCoordinator);
-
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-});
-
-// @route   GET api/colleges/coordinators
-// @desc    Get all coordinators for the college
-// @access  Private (College)
-router.get('/coordinators', auth, async (req, res) => {
-    if (req.user.role !== 'college') return res.status(403).json({ message: 'Access denied' });
-
-    try {
-        const CollegeUser = await User.findById(req.user.id);
-        const coordinators = await User.find({
-            collegeId: CollegeUser.collegeId,
-            role: 'coordinator'
-        }).select('-passwordHash');
-
-        res.json(coordinators);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-});
+// @route   GET api/colleges/:id
+// @desc    Get college by ID
+// @access  Private
+// Moved to top
 
 // @route   DELETE api/colleges/coordinators/:id
 // @desc    Delete a Coordinator
@@ -329,6 +330,25 @@ router.delete('/coordinators/:id', auth, async (req, res) => {
         await coordinator.deleteOne();
         res.json({ message: 'Coordinator removed' });
 
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   GET api/colleges/:id
+// @desc    Get college by ID
+// @access  Private
+router.get('/:id', auth, async (req, res) => {
+    try {
+        console.log(`Searching for college with ID: ${req.params.id}`);
+        const college = await College.findById(req.params.id);
+        if (!college) {
+            console.log(`College NOT found for ID: ${req.params.id}`);
+            return res.status(404).json({ message: 'College not found' });
+        }
+        console.log(`College found: ${college.name}`);
+        res.json(college);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

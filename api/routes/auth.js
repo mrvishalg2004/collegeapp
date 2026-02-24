@@ -54,6 +54,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log(`Attempting login for: ${email}`);
 
         // Check user
         let user = await User.findOne({ email });
@@ -64,13 +65,18 @@ router.post('/login', async (req, res) => {
         // Check password
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) {
+            console.log(`Invalid password for: ${email}`);
             return res.status(400).json({ message: 'Invalid Credentials' });
         }
 
+        console.log(`User ${email} authenticated successfully. Role: ${user.role}`);
+
         // Check College Status if applicable
         if (user.collegeId) {
+            console.log(`Checking college status for: ${user.collegeId}`);
             const college = await College.findById(user.collegeId);
             if (college && college.status === 'inactive') {
+                console.log(`College ${user.collegeId} is blocked.`);
                 return res.status(403).json({ message: 'This college is currently blocked by administration. Please contact your administrator.' });
             }
         }
