@@ -1,11 +1,28 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // For production builds (APK), always use the Render URL.
-// For local development, change this to your local IP address.
+// For local development, it dynamically fetches your laptop's Wi-Fi IP automatically.
 const RENDER_URL = 'https://collegeapp-1-8zi4.onrender.com/api';
-const LOCAL_URL = 'http://192.168.1.2:3000/api'; // Update with your IP for local testing
+
+const getLocalIpAddress = () => {
+    try {
+        const hostUri = Constants.expoConfig?.hostUri;
+        if (hostUri) {
+            // Extracts the IP address from the Expo host URL
+            const ip = hostUri.split(':')[0];
+            return `http://${ip}:3000/api`;
+        }
+    } catch (e) {
+        console.log('Error fetching dynamic IP:', e);
+    }
+    // Fallback IP if unable to resolve
+    return 'http://192.168.1.13:3000/api';
+};
+
+const LOCAL_URL = getLocalIpAddress();
 
 const API_URL = __DEV__ ? LOCAL_URL : RENDER_URL;
 
